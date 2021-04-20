@@ -3,4 +3,4 @@ project(hw1_smash)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(hw1_smash main.cpp)
+add_executable(hw1_smash  Commands.cpp signals.cpp smash.cpp)

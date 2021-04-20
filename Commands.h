@@ -48,6 +48,7 @@ class RedirectionCommand : public Command {
   //void cleanup() override;
 };
 
+
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members public:
   ChangeDirCommand(const char* cmd_line, char** plastPwd);
@@ -143,7 +144,14 @@ class CatCommand : public BuiltInCommand {
 class SmallShell {
  private:
   // TODO: Add your data members
-  SmallShell();
+  char* prompt;
+public:
+    char *getPrompt() const;
+
+    void setPrompt(char *prompt);
+
+private:
+    SmallShell();
  public:
   Command *CreateCommand(const char* cmd_line);
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
@@ -157,6 +165,15 @@ class SmallShell {
   ~SmallShell();
   void executeCommand(const char* cmd_line);
   // TODO: add extra methods as needed
+};
+
+class CHPromptCommand : public BuiltInCommand {
+    const char* text_for_prompt;
+    SmallShell &smash;
+// TODO: Add your data members public:
+    CHPromptCommand(const char* new_prompt, SmallShell& smash);
+    virtual ~CHPromptCommand() {}
+    void execute() override;
 };
 
 #endif //SMASH_COMMAND_H_

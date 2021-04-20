@@ -77,7 +77,7 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
-SmallShell::SmallShell() {
+SmallShell::SmallShell() : prompt("smash") {
 // TODO: add your implementation
 }
 
@@ -90,6 +90,11 @@ SmallShell::~SmallShell() {
 */
 Command * SmallShell::CreateCommand(const char* cmd_line) {
 	// For example:
+    string cmd_s = _trim(string(cmd_line));
+    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    if (firstWord.compare("chprompt") == 0) {
+        return new CHPromptCommand(cmd_line, this);
+    }
 /*
   string cmd_s = _trim(string(cmd_line));
   string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
@@ -115,4 +120,23 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // Command* cmd = CreateCommand(cmd_line);
   // cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
+}
+
+char *SmallShell::getPrompt() const {
+    return prompt;
+}
+
+void SmallShell::setPrompt(char *prompt) {
+    SmallShell::prompt = prompt;
+}
+
+CHPromptCommand::CHPromptCommand(const char *new_prompt, SmallShell& smash) : text_for_prompt(new_prompt), smash(smash) {
+
+
+
+}
+
+void CHPromptCommand::execute() {
+
+
 }
