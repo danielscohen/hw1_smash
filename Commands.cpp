@@ -37,6 +37,16 @@ string _trim(const std::string& s)
   return _rtrim(_ltrim(s));
 }
 
+vector<string> _cmdLineToParams(const string& cmd_line){
+    vector<string> params;
+    std::istringstream iss(_trim(string(cmd_line)));
+    for(string s; iss >> s; ) {
+        params.push_back(s);
+    }
+    params.erase(params.begin());
+    return params;
+}
+
 int _parseCommandLine(const char* cmd_line, char** args) {
   FUNC_ENTRY()
   int i = 0;
@@ -93,7 +103,7 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
     if (firstWord.compare("chprompt") == 0) {
-        return new CHPromptCommand(cmd_line, this);
+        return new CHPromptCommand(cmd_line, getInstance());
     }
 /*
   string cmd_s = _trim(string(cmd_line));
@@ -122,21 +132,29 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
-char *SmallShell::getPrompt() const {
+string SmallShell::getPrompt() const {
     return prompt;
 }
 
-void SmallShell::setPrompt(char *prompt) {
+void SmallShell::setPrompt(string prompt) {
     SmallShell::prompt = prompt;
 }
 
-CHPromptCommand::CHPromptCommand(const char *new_prompt, SmallShell& smash) : text_for_prompt(new_prompt), smash(smash) {
+CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
+        : BuiltInCommand(cmd_line), smash(smash) {}
 
+void CHPromptCommand::execute() {
+    if(!cmd_params.empty()){
+        smash.setPrompt(*cmd_params.begin());
+    }
 
 
 }
 
-void CHPromptCommand::execute() {
+Command::Command(const string& cmd_line) {
+    cmd_params = _cmdLineToParams(cmd_line);
+}
 
-
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
+   if(cmd_params.back() == "&") cmd_params.pop_back();
 }

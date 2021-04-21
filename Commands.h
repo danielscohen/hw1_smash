@@ -6,11 +6,19 @@
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
+const std::string WHITESPACE = " \n\r\t\f\v";
+
+using namespace std;
+
 class Command {
 // TODO: Add your data members
+ protected:
+    vector<string> cmd_params;
  public:
-  Command(const char* cmd_line);
-  virtual ~Command();
+  Command(const string&);
+
+
+    virtual ~Command(){};
   virtual void execute() = 0;
   //virtual void prepare();
   //virtual void cleanup();
@@ -20,7 +28,9 @@ class Command {
 class BuiltInCommand : public Command {
  public:
   BuiltInCommand(const char* cmd_line);
-  virtual ~BuiltInCommand() {}
+
+
+    virtual ~BuiltInCommand() {}
 };
 
 class ExternalCommand : public Command {
@@ -144,11 +154,11 @@ class CatCommand : public BuiltInCommand {
 class SmallShell {
  private:
   // TODO: Add your data members
-  char* prompt;
+  string prompt;
 public:
-    char *getPrompt() const;
+    string getPrompt() const;
 
-    void setPrompt(char *prompt);
+    void setPrompt(string prompt);
 
 private:
     SmallShell();
@@ -168,10 +178,10 @@ private:
 };
 
 class CHPromptCommand : public BuiltInCommand {
-    const char* text_for_prompt;
     SmallShell &smash;
-// TODO: Add your data members public:
-    CHPromptCommand(const char* new_prompt, SmallShell& smash);
+// TODO: Add your data members
+ public:
+    CHPromptCommand(const char *cmd_line, SmallShell &smash);
     virtual ~CHPromptCommand() {}
     void execute() override;
 };
