@@ -126,9 +126,8 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 
 void SmallShell::executeCommand(const char *cmd_line) {
   // TODO: Add your implementation here
-  // for example:
-  // Command* cmd = CreateCommand(cmd_line);
-  // cmd->execute();
+  Command* cmd = CreateCommand(cmd_line);
+  cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
@@ -146,6 +145,9 @@ CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
 void CHPromptCommand::execute() {
     if(!cmd_params.empty()){
         smash.setPrompt(*cmd_params.begin());
+    } else {
+
+        smash.setPrompt("smash");
     }
 
 
