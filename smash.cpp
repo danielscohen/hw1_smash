@@ -1,6 +1,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/types.h>
 #include <signal.h>
 #include "Commands.h"
 #include "signals.h"

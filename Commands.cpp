@@ -160,3 +160,10 @@ Command::Command(const string& cmd_line) {
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
    if(cmd_params.back() == "&") cmd_params.pop_back();
 }
+
+ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+ }
+
+void ShowPidCommand::execute() {
+    cout << "smash pid is " << getpid() << endl;
+}
