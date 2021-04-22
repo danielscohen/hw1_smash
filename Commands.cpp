@@ -144,7 +144,7 @@ CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
 
 void CHPromptCommand::execute() {
     if(!cmd_params.empty()){
-        smash.setPrompt(*cmd_params.begin());
+        smash.setPrompt(*cmd_params.begin()); //isn't bad playing with iterator?
     } else {
 
         smash.setPrompt("smash");
@@ -173,6 +173,41 @@ GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_
 }
 
 void GetCurrDirCommand::execute() {
-    char buf[COMMAND_ARGS_MAX_LENGTH + 1];
+    char buf[COMMAND_ARGS_MAX_LENGTH + 1]; // +1 needed?
     cout << getcwd(buf, sizeof(buf)) << endl;
+}
+
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line), plastPwd(plastPwd)  {
+
+}
+
+void ChangeDirCommand::execute() {
+    if (cmd_params.size() == 0) { //What happens if size==0?
+        return;
+    }
+    if (cmd_params.size() > 1) {
+        cerr << "smash error: cd: too many arguments" << endl;
+        return;
+    }
+    if (cmd_params.front() == "-") {
+        if (plastPwd != NULL) {
+            if(chdir(*plastPwd) == -1){
+                perror("smash error: chdir failed");
+            }
+            return;
+        }
+        else {
+            cerr << "smash error: cd: OLDPWD not set" << endl;  // if null
+            return;
+        }
+    }
+    else {
+        char* path = new char [cmd_params.front().length()+1];
+        strcpy(path, cmd_params.front().c_str());
+        //should null terminator be removed?
+        if(chdir(path) == -1){
+            perror("smash error: chdir failed");
+        }
+        return;
+    }
 }

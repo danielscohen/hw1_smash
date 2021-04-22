@@ -5,6 +5,8 @@
 #include <signal.h>
 #include "Commands.h"
 #include "signals.h"
+#include <unistd.h>
+
 
 int main(int argc, char* argv[]) {
     if(signal(SIGTSTP , ctrlZHandler)==SIG_ERR) {
