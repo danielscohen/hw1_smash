@@ -87,12 +87,13 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
-SmallShell::SmallShell() : prompt("smash") {
+SmallShell::SmallShell() : plastPwd(nullptr), prompt("smash") {
 // TODO: add your implementation
 }
 
 SmallShell::~SmallShell() {
 // TODO: add your implementation
+    delete plastPwd;
 }
 
 /**
@@ -104,6 +105,15 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
     if (firstWord.compare("chprompt") == 0) {
         return new CHPromptCommand(cmd_line, getInstance());
+    }
+    if (firstWord.compare("showpid") == 0) {
+        return new ShowPidCommand(cmd_line);
+    }
+    if (firstWord.compare("pwd") == 0) {
+        return new GetCurrDirCommand(cmd_line);
+    }
+    if (firstWord.compare("cd") == 0) {
+        return new ChangeDirCommand(cmd_line, getInstance());
     }
 /*
   string cmd_s = _trim(string(cmd_line));
@@ -137,6 +147,14 @@ string SmallShell::getPrompt() const {
 
 void SmallShell::setPrompt(string prompt) {
     SmallShell::prompt = prompt;
+}
+
+char *SmallShell::getPlastPwd() const {
+    return plastPwd;
+}
+
+void SmallShell::setPlastPwd(char *plastPwd) {
+    SmallShell::plastPwd = plastPwd;
 }
 
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
@@ -177,11 +195,12 @@ void GetCurrDirCommand::execute() {
     cout << getcwd(buf, sizeof(buf)) << endl;
 }
 
-ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd) : BuiltInCommand(cmd_line), plastPwd(plastPwd)  {
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, SmallShell& smash) : BuiltInCommand(cmd_line), smash(smash)  {
 
 }
 
 void ChangeDirCommand::execute() {
+    char *plastPwd = smash.getPlastPwd();
     if (cmd_params.size() == 0) { //What happens if size==0?
         return;
     }
@@ -190,8 +209,11 @@ void ChangeDirCommand::execute() {
         return;
     }
     if (cmd_params.front() == "-") {
-        if (plastPwd != NULL) {
-            if(chdir(*plastPwd) == -1){
+        if (plastPwd != nullptr) {
+            if(chdir(plastPwd) != -1){
+                delete plastPwd;
+                smash.setPlastPwd(get_current_dir_name());
+            } else {
                 perror("smash error: chdir failed");
             }
             return;
@@ -202,12 +224,15 @@ void ChangeDirCommand::execute() {
         }
     }
     else {
+        delete plastPwd;
+        smash.setPlastPwd(get_current_dir_name());
         char* path = new char [cmd_params.front().length()+1];
         strcpy(path, cmd_params.front().c_str());
         //should null terminator be removed?
         if(chdir(path) == -1){
             perror("smash error: chdir failed");
         }
+        delete[] path;
         return;
     }
 }

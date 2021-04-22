@@ -59,15 +59,6 @@ class RedirectionCommand : public Command {
 };
 
 
-class ChangeDirCommand : public BuiltInCommand {
-// TODO: Add your data members public:
-private:
-    char** plastPwd; //should be initiated to NULL?
-public:
-  ChangeDirCommand(const char* cmd_line, char** plastPwd);
-  virtual ~ChangeDirCommand() {}
-  void execute() override;
-};
 
 class GetCurrDirCommand : public BuiltInCommand {
  public:
@@ -158,6 +149,12 @@ class SmallShell {
  private:
   // TODO: Add your data members
   string prompt;
+    char* plastPwd;
+public:
+    char * getPlastPwd() const;
+
+    void setPlastPwd(char *plastPwd);
+    //should be initiated to NULL?
 public:
     string getPrompt() const;
 
@@ -189,4 +186,12 @@ class CHPromptCommand : public BuiltInCommand {
     void execute() override;
 };
 
+class ChangeDirCommand : public BuiltInCommand {
+    SmallShell& smash;
+// TODO: Add your data members public:
+public:
+    ChangeDirCommand(const char* cmd_line, SmallShell &smash);
+    virtual ~ChangeDirCommand() {}
+    void execute() override;
+};
 #endif //SMASH_COMMAND_H_
