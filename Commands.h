@@ -25,6 +25,8 @@ class Command {
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
+  virtual bool isExternalCMD() = 0;
+  bool isBackgroundCMD();
 };
 
 class BuiltInCommand : public Command {
@@ -33,6 +35,8 @@ class BuiltInCommand : public Command {
 
 
     virtual ~BuiltInCommand() {}
+
+    bool isExternalCMD() override;
 };
 
 class ExternalCommand : public Command {
@@ -40,6 +44,7 @@ class ExternalCommand : public Command {
   ExternalCommand(const char* cmd_line, SmallShell &smash);
   virtual ~ExternalCommand() {}
   void execute() override;
+  bool isExternalCMD() override;
 };
 
 class PipeCommand : public Command {
@@ -91,6 +96,10 @@ class JobsList {
  public:
   class JobEntry {
    // TODO: Add your data members
+   int jobID;
+   pid_t pid;
+   int insertTime;
+
   };
  // TODO: Add your data members
  public:

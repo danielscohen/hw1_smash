@@ -113,6 +113,7 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     if (firstWord.compare("cd") == 0) {
         return new ChangeDirCommand(cmd_line, getInstance());
     }
+    return new ExternalCommand(cmd_line);
 /*
   string cmd_s = _trim(string(cmd_line));
   string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
@@ -129,12 +130,28 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     return new ExternalCommand(cmd_line);
   }
   */
-  return nullptr;
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
   Command* cmd = CreateCommand(cmd_line);
-  cmd->execute();
+    joblist.removeFinishedJobs();
+    if(cmd->isExternalCMD()){
+      pid_t pid = fork();
+      if(pid == 0){
+          cmd->execute();
+      } else if(pid == -1) {
+          perror("smash error: fork failed");
+      } else{
+          if(cmd->isBackgroundCMD()){
+              joblist.removeFinishedJobs();
+              joblist.addJob(cmd, false);
+          } else {
+              waitpid(pid, nullptr, 0);
+          }
+      }
+  } else {
+      cmd->execute();
+  }
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
@@ -172,6 +189,12 @@ Command::Command(const string& cmd_line) {
     cmd_params = _cmdLineToParams(cmd_line);
 }
 
+bool Command::isBackgroundCMD() {
+    return cmd_params.back() == "&";
+}
+
+bool BuiltInCommand::isExternalCMD() {return false;}
+bool ExternalCommand::isExternalCMD() {return true;}
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
    if(!cmd_params.empty() && cmd_params.back() == "&") cmd_params.pop_back();
 }
@@ -241,13 +264,13 @@ ExternalCommand::ExternalCommand(const char *cmd_line, SmallShell &smash): Comma
 }
 
 void ExternalCommand::execute() {
-    const char**  arguments = new const char*  [cmd_params.size()+2];
-    const char* programName = "sh";
-    arguments[0] = programName;
+    const char* arguments [COMMAND_MAX_ARGS + 2];
+    //const char* programName = "sh";
+    arguments[0] = "sh";
     for (int j = 0;  j < cmd_params.size()+1;  ++j) {     // copy args
         arguments[j+1] = cmd_params[j].c_str();
     }
     arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
     const char* path = "\"/bin/sh\"";
-    _execv(path, arguments);
+    execv(path, (char*const*) arguments);
 }
