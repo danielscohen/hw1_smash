@@ -85,14 +85,11 @@ void _removeBackgroundSign(char* cmd_line) {
   cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// TODO: Add your implementation for classes in Commands.h 
 
 SmallShell::SmallShell() : plastPwd(nullptr), prompt("smash") {
-// TODO: add your implementation
 }
 
 SmallShell::~SmallShell() {
-// TODO: add your implementation
     delete plastPwd;
 }
 
@@ -135,7 +132,6 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
-  // TODO: Add your implementation here
   Command* cmd = CreateCommand(cmd_line);
   cmd->execute();
   // Please note that you must fork smash process for some commands (e.g., external commands....)
@@ -184,6 +180,7 @@ ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) 
 
 void ShowPidCommand::execute() {
     cout << "smash pid is " << getpid() << endl;
+    //TODO: Deal with potential error
 }
 
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
@@ -193,6 +190,7 @@ GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_
 void GetCurrDirCommand::execute() {
     char buf[COMMAND_ARGS_MAX_LENGTH + 1]; // +1 needed?
     cout << getcwd(buf, sizeof(buf)) << endl;
+    //TODO: Deal with potential error
 }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, SmallShell& smash) : BuiltInCommand(cmd_line), smash(smash)  {
@@ -213,6 +211,7 @@ void ChangeDirCommand::execute() {
             if(chdir(plastPwd) != -1){
                 delete plastPwd;
                 smash.setPlastPwd(get_current_dir_name());
+                //TODO: Deal with potential error
             } else {
                 perror("smash error: chdir failed");
             }
