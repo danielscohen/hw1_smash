@@ -10,6 +10,8 @@ const std::string WHITESPACE = " \n\r\t\f\v";
 
 using namespace std;
 
+class SmallShell;
+
 class Command {
 // TODO: Add your data members
  protected:
@@ -35,7 +37,7 @@ class BuiltInCommand : public Command {
 
 class ExternalCommand : public Command {
  public:
-  ExternalCommand(const char* cmd_line);
+  ExternalCommand(const char* cmd_line, SmallShell &smash);
   virtual ~ExternalCommand() {}
   void execute() override;
 };
