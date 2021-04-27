@@ -272,6 +272,6 @@ void ExternalCommand::execute() {
         arguments[j+1] = cmd_params[j].c_str();
     }
     arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
-    const char* path = "\"/bin/sh\"";
+    const char* path = "\"/bin/bash\"";
     execv(path, (char*const*) arguments);
 }
