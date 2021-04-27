@@ -16,9 +16,11 @@ class Command {
 // TODO: Add your data members
  protected:
     vector<string> cmd_params;
+    const string& cmdText;
  public:
   Command(const string&);
 
+    const string &getCmdText() const;
 
     virtual ~Command(){};
   virtual void execute() = 0;
@@ -40,12 +42,19 @@ class BuiltInCommand : public Command {
 };
 
 class ExternalCommand : public Command {
+protected:
+    pid_t pid;
  public:
   ExternalCommand(const char* cmd_line, SmallShell &smash);
   virtual ~ExternalCommand() {}
   void execute() override;
   bool isExternalCMD() override;
+
+    pid_t getPid() const;
+
+    void setPid(pid_t pid);
 };
+
 
 class PipeCommand : public Command {
   // TODO: Add your data members
@@ -91,21 +100,27 @@ class QuitCommand : public BuiltInCommand {
 
 
 
-
+class JobEntry;
 class JobsList {
+    vector<JobEntry> jList = jList<JobEntry>();
+    int maxJobID;
  public:
   class JobEntry {
    // TODO: Add your data members
    int jobID;
    pid_t pid;
    int insertTime;
+   string cmd;
+   bool isStopped;
+  public:
+      JobEntry(int jobId, pid_t pid, int insertTime, const string &cmd, bool isStopped);
 
   };
  // TODO: Add your data members
  public:
   JobsList();
   ~JobsList();
-  void addJob(Command* cmd, bool isStopped = false);
+  void addJob(Command *cmd, bool isStopped, pid_t pid);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
@@ -118,8 +133,9 @@ class JobsList {
 
 class JobsCommand : public BuiltInCommand {
  // TODO: Add your data members
+    JobsList& jobslist;
  public:
-  JobsCommand(const char* cmd_line, JobsList* jobs);
+  JobsCommand(const char* cmd_line, JobsList& jobs);
   virtual ~JobsCommand() {}
   void execute() override;
 };
@@ -161,6 +177,7 @@ class SmallShell {
   // TODO: Add your data members
   string prompt;
     char* plastPwd;
+    JobsList jobslist;
 public:
     char * getPlastPwd() const;
 
@@ -170,6 +187,8 @@ public:
     string getPrompt() const;
 
     void setPrompt(string prompt);
+
+    JobsList &getJobslist() const;
 
 private:
     SmallShell();

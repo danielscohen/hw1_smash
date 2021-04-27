@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
+#include <time.h>
 
 
 using namespace std;
@@ -113,6 +114,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     if (firstWord.compare("cd") == 0) {
         return new ChangeDirCommand(cmd_line, getInstance());
     }
+    if (firstWord.compare("jobs") == 0) {
+        return new JobsCommand(cmd_line, getJobslist());
+    }
     return new ExternalCommand(cmd_line);
 /*
   string cmd_s = _trim(string(cmd_line));
@@ -134,7 +138,7 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 
 void SmallShell::executeCommand(const char *cmd_line) {
   Command* cmd = CreateCommand(cmd_line);
-    joblist.removeFinishedJobs();
+    jobslist.removeFinishedJobs();
     if(cmd->isExternalCMD()){
       pid_t pid = fork();
       if(pid == 0){
@@ -143,8 +147,8 @@ void SmallShell::executeCommand(const char *cmd_line) {
           perror("smash error: fork failed");
       } else{
           if(cmd->isBackgroundCMD()){
-              joblist.removeFinishedJobs();
-              joblist.addJob(cmd, false);
+              jobslist.removeFinishedJobs();
+              jobslist.addJob(cmd, false, 0);
           } else {
               waitpid(pid, nullptr, 0);
           }
@@ -171,6 +175,10 @@ void SmallShell::setPlastPwd(char *plastPwd) {
     SmallShell::plastPwd = plastPwd;
 }
 
+JobsList &SmallShell::getJobslist() const {
+    return jobslist&;
+}
+
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
         : BuiltInCommand(cmd_line), smash(smash) {}
 
@@ -185,12 +193,16 @@ void CHPromptCommand::execute() {
 
 }
 
-Command::Command(const string& cmd_line) {
+Command::Command(const string& cmd_line) : cmdText(cmd_line) {
     cmd_params = _cmdLineToParams(cmd_line);
 }
 
 bool Command::isBackgroundCMD() {
     return cmd_params.back() == "&";
+}
+
+const string &Command::getCmdText() const {
+    return cmdText;
 }
 
 bool BuiltInCommand::isExternalCMD() {return false;}
@@ -274,4 +286,65 @@ void ExternalCommand::execute() {
     arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
     const char* path = "\"/bin/bash\"";
     execv(path, (char*const*) arguments);
+}
+
+JobsList::JobEntry::JobEntry(int jobId, pid_t pid, int insertTime, const string &cmd, bool isStopped) : jobID(jobId), pid(pid),
+                                                                                        insertTime(insertTime),
+                                                                                        cmd(cmd), isStopped(isStopped) {}
+
+JobsList::JobsList() :  maxJobID(0)  {
+
+}
+
+JobsList::~JobsList() {
+
+}
+
+void JobsList::addJob(Command *cmd, bool isStopped, pid_t pid) {
+    time_t t = time(nullptr);
+    if(t == -1){
+        perror("smash error: time failed");
+        return;
+    }
+    jList.push_back(new JobEntry(++maxJobID, pid, t, cmd->getCmdText(), isStopped ));
+
+}
+
+void JobsList::printJobsList() {
+
+}
+
+void JobsList::killAllJobs() {
+
+}
+
+void JobsList::removeFinishedJobs() {
+
+}
+
+JobEntry *JobsList::getJobById(int jobId) {
+    return nullptr;
+}
+
+void JobsList::removeJobById(int jobId) {
+
+}
+
+JobEntry *JobsList::getLastJob(int *lastJobId) {
+    return nullptr;
+}
+
+JobEntry *JobsList::getLastStoppedJob(int *jobId) {
+    return nullptr;
+}
+
+JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
+
+}
+pid_t ExternalCommand::getPid() const {
+    return pid;
+}
+
+void ExternalCommand::setPid(pid_t pid) {
+    ExternalCommand::pid = pid;
 }
