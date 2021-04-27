@@ -86,14 +86,11 @@ void _removeBackgroundSign(char* cmd_line) {
   cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// TODO: Add your implementation for classes in Commands.h 
 
 SmallShell::SmallShell() : plastPwd(nullptr), prompt("smash") {
-// TODO: add your implementation
 }
 
 SmallShell::~SmallShell() {
-// TODO: add your implementation
     delete plastPwd;
 }
 
@@ -116,6 +113,7 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     if (firstWord.compare("cd") == 0) {
         return new ChangeDirCommand(cmd_line, getInstance());
     }
+    return new ExternalCommand(cmd_line);
 /*
   string cmd_s = _trim(string(cmd_line));
   string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
@@ -132,13 +130,28 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     return new ExternalCommand(cmd_line);
   }
   */
-  return nullptr;
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
-  // TODO: Add your implementation here
   Command* cmd = CreateCommand(cmd_line);
-  cmd->execute();
+    joblist.removeFinishedJobs();
+    if(cmd->isExternalCMD()){
+      pid_t pid = fork();
+      if(pid == 0){
+          cmd->execute();
+      } else if(pid == -1) {
+          perror("smash error: fork failed");
+      } else{
+          if(cmd->isBackgroundCMD()){
+              joblist.removeFinishedJobs();
+              joblist.addJob(cmd, false);
+          } else {
+              waitpid(pid, nullptr, 0);
+          }
+      }
+  } else {
+      cmd->execute();
+  }
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
@@ -176,6 +189,12 @@ Command::Command(const string& cmd_line) {
     cmd_params = _cmdLineToParams(cmd_line);
 }
 
+bool Command::isBackgroundCMD() {
+    return cmd_params.back() == "&";
+}
+
+bool BuiltInCommand::isExternalCMD() {return false;}
+bool ExternalCommand::isExternalCMD() {return true;}
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
    if(!cmd_params.empty() && cmd_params.back() == "&") cmd_params.pop_back();
 }
@@ -185,6 +204,7 @@ ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) 
 
 void ShowPidCommand::execute() {
     cout << "smash pid is " << getpid() << endl;
+    //TODO: Deal with potential error
 }
 
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
@@ -194,6 +214,7 @@ GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_
 void GetCurrDirCommand::execute() {
     char buf[COMMAND_ARGS_MAX_LENGTH + 1]; // +1 needed?
     cout << getcwd(buf, sizeof(buf)) << endl;
+    //TODO: Deal with potential error
 }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, SmallShell& smash) : BuiltInCommand(cmd_line), smash(smash)  {
@@ -214,6 +235,7 @@ void ChangeDirCommand::execute() {
             if(chdir(plastPwd) != -1){
                 delete plastPwd;
                 smash.setPlastPwd(get_current_dir_name());
+                //TODO: Deal with potential error
             } else {
                 perror("smash error: chdir failed");
             }
@@ -241,3 +263,15 @@ void ChangeDirCommand::execute() {
 ExternalCommand::ExternalCommand(const char *cmd_line, SmallShell &smash): Command(cmd_line) {
 }
 
+
+void ExternalCommand::execute() {
+    const char* arguments [COMMAND_MAX_ARGS + 2];
+    //const char* programName = "sh";
+    arguments[0] = "sh";
+    for (int j = 0;  j < cmd_params.size()+1;  ++j) {     // copy args
+        arguments[j+1] = cmd_params[j].c_str();
+    }
+    arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
+    const char* path = "\"/bin/sh\"";
+    execv(path, (char*const*) arguments);
+}
