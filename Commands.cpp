@@ -275,3 +275,9 @@ void ExternalCommand::execute() {
     const char* path = "\"/bin/bash\"";
     execv(path, (char*const*) arguments);
 }
+
+void JobsCommand::execute() {
+    joblist.removeFinishedJobs();
+    jobslist.printJobsList();
+    return;
+}
