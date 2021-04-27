@@ -348,3 +348,8 @@ pid_t ExternalCommand::getPid() const {
 void ExternalCommand::setPid(pid_t pid) {
     ExternalCommand::pid = pid;
 }
+void JobsCommand::execute() {
+    joblist.removeFinishedJobs();
+    jobslist.printJobsList();
+    return;
+}
