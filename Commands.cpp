@@ -241,14 +241,3 @@ void ChangeDirCommand::execute() {
 ExternalCommand::ExternalCommand(const char *cmd_line, SmallShell &smash): Command(cmd_line) {
 }
 
-void ExternalCommand::execute() {
-    const char**  arguments = new const char*  [cmd_params.size()+2];
-    const char* programName = "sh";
-    arguments[0] = programName;
-    for (int j = 0;  j < cmd_params.size()+1;  ++j) {     // copy args
-        arguments[j+1] = cmd_params[j].c_str();
-    }
-    arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
-    const char* path = "\"/bin/sh\"";
-    _execv(path, arguments);
-}
