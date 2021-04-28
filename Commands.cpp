@@ -292,6 +292,26 @@ JobsList::JobEntry::JobEntry(int jobId, pid_t pid, int insertTime, const string 
                                                                                         insertTime(insertTime),
                                                                                         cmd(cmd), isStopped(isStopped) {}
 
+int JobsList::JobEntry::getJobId() const {
+    return jobID;
+}
+
+int JobsList::JobEntry::getInsertTime() const {
+    return insertTime;
+}
+
+const string &JobsList::JobEntry::getCmd() const {
+    return cmd;
+}
+
+bool JobsList::JobEntry::getStopped() const {
+    return isStopped;
+}
+
+pid_t JobsList::JobEntry::getPid() const {
+    return pid;
+}
+
 JobsList::JobsList() :  maxJobID(0)  {
 
 }
@@ -311,7 +331,15 @@ void JobsList::addJob(Command *cmd, bool isStopped, pid_t pid) {
 }
 
 void JobsList::printJobsList() {
-
+    //[<job-id>] <command> : <process id> <seconds elapsed> (stopped)
+    sort(jList.begin(), jList.end(), compareEntry);
+    for (auto &entry: jList) {
+        cout <<'['<<entry.getJobId()<<"] "<<entry.getCmd()<<" : "<<entry.getPid()<<" "
+        <<difftime(entry.getInsertTime(),time(nullptr))<<" secs";
+        if (entry.getStopped()) cout<<" (stopped)";
+        cout<<endl;
+        return;
+    }
 }
 
 void JobsList::killAllJobs() {
@@ -338,18 +366,22 @@ JobEntry *JobsList::getLastStoppedJob(int *jobId) {
     return nullptr;
 }
 
+bool JobsList::compareEntry(JobEntry entry1, JobEntry entry2) {
+    return (entry1.getJobId() < entry2.getJobId());
+}
+
 JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
 
-}
-pid_t ExternalCommand::getPid() const {
-    return pid;
-}
-
-void ExternalCommand::setPid(pid_t pid) {
-    ExternalCommand::pid = pid;
 }
 void JobsCommand::execute() {
     joblist.removeFinishedJobs();
     jobslist.printJobsList();
     return;
+}
+
+pid_t ExternalCommand::getPid() const {
+    return pid;
+}
+void ExternalCommand::setPid(pid_t pid) {
+    ExternalCommand::pid = pid;
 }

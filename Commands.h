@@ -112,8 +112,19 @@ class JobsList {
    int insertTime;
    string cmd;
    bool isStopped;
+
   public:
       JobEntry(int jobId, pid_t pid, int insertTime, const string &cmd, bool isStopped);
+
+      int getInsertTime() const;
+
+      const string &getCmd() const;
+
+      bool getStopped() const;
+
+      pid_t getPid() const;
+
+      int getJobId() const;
 
   };
  // TODO: Add your data members
@@ -128,6 +139,8 @@ class JobsList {
   void removeJobById(int jobId);
   JobEntry * getLastJob(int* lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
+  bool compareEntry(JobEntry entry1, JobEntry entry2);
+
   // TODO: Add extra methods or modify exisitng ones as needed
 };
 
