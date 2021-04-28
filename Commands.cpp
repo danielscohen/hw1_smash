@@ -351,11 +351,18 @@ void JobsList::removeFinishedJobs() {
 }
 
 JobEntry *JobsList::getJobById(int jobId) {
-    return nullptr;
+    for (auto &entry: jList) {
+        if (entry.getJobId()==jobId) return entry;
+    }
+    throw runtime_error("no JobID found");
 }
 
 void JobsList::removeJobById(int jobId) {
-
+    for (auto it = jList.begin(); it != jList.end(); ++it) {
+        if (it->getJobId() == jobId){
+            jList.erase(it);
+        }
+    }
 }
 
 JobEntry *JobsList::getLastJob(int *lastJobId) {
@@ -374,7 +381,7 @@ JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(
 
 }
 void JobsCommand::execute() {
-    joblist.removeFinishedJobs();
+    jobslist.removeFinishedJobs();
     jobslist.printJobsList();
     return;
 }
