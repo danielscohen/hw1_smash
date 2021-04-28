@@ -216,7 +216,6 @@ ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) 
 
 void ShowPidCommand::execute() {
     cout << "smash pid is " << getpid() << endl;
-    //TODO: Deal with potential error
 }
 
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
@@ -224,9 +223,13 @@ GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_
 }
 
 void GetCurrDirCommand::execute() {
-    char buf[COMMAND_ARGS_MAX_LENGTH + 1]; // +1 needed?
-    cout << getcwd(buf, sizeof(buf)) << endl;
-    //TODO: Deal with potential error
+    char* currentDir = get_current_dir_name();
+    if(currentDir == NULL){
+        perror("smash error: get_current_dir_name failed");
+        return;
+    }
+    cout << currentDir << endl;
+    delete currentDir;
 }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, SmallShell& smash) : BuiltInCommand(cmd_line), smash(smash)  {
@@ -234,6 +237,11 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, SmallShell& smash) : Bu
 }
 
 void ChangeDirCommand::execute() {
+    char* currentDir = get_current_dir_name();
+    if(currentDir == NULL){
+        perror("smash error: get_current_dir_name failed");
+        return;
+    }
     char *plastPwd = smash.getPlastPwd();
     if (cmd_params.size() == 0) { //What happens if size==0?
         return;
@@ -246,8 +254,7 @@ void ChangeDirCommand::execute() {
         if (plastPwd != nullptr) {
             if(chdir(plastPwd) != -1){
                 delete plastPwd;
-                smash.setPlastPwd(get_current_dir_name());
-                //TODO: Deal with potential error
+                smash.setPlastPwd(currentDir);
             } else {
                 perror("smash error: chdir failed");
             }
@@ -260,7 +267,7 @@ void ChangeDirCommand::execute() {
     }
     else {
         delete plastPwd;
-        smash.setPlastPwd(get_current_dir_name());
+        smash.setPlastPwd(currentDir);
         char* path = new char [cmd_params.front().length()+1];
         strcpy(path, cmd_params.front().c_str());
         //should null terminator be removed?
