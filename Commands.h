@@ -141,6 +141,7 @@ public:
   JobEntry * getLastJob(int* lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
   static bool compareEntry(JobEntry entry1, JobEntry entry2);
+  bool isJobIdInList(int jobId) const;
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
@@ -156,8 +157,9 @@ class JobsCommand : public BuiltInCommand {
 
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
+    bool invalid_arg(const string& str) const;
  public:
-  KillCommand(const char* cmd_line, JobsList* jobs);
+  KillCommand(const char* cmd_line);
   virtual ~KillCommand() {}
   void execute() override;
 };

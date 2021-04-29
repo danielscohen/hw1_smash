@@ -118,6 +118,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     if (firstWord.compare("jobs") == 0) {
         return new JobsCommand(cmd_line, getJobslist());
     }
+    if (firstWord.compare("kill") == 0) {
+        return new KillCommand(cmd_line);
+    }
     return new ExternalCommand(cmd_line, getInstance());
 /*
   string cmd_s = _trim(string(cmd_line));
@@ -371,11 +374,12 @@ void JobsList::removeFinishedJobs() {
             return;
 
         }
-        if(WIFEXITED(status)) {
-            removeJobByPID(jobStatus);
-            if (jList.empty()) return;
-            jobStatus = waitpid(-1, &status, WNOHANG);
+        removeJobByPID(jobStatus);
+        if (jList.empty()){
+            maxJobID = 0;
+            return;
         }
+        jobStatus = waitpid(-1, &status, WNOHANG);
     }
 //    vector<int> toRemove;
 //    for (auto &entry: jList) {
@@ -393,6 +397,12 @@ void JobsList::removeFinishedJobs() {
 //    for (auto &i: toRemove) {
 //        removeJobById(i);
 //    }
+    maxJobID = 0;
+    for (auto &entry: jList) {
+        if (entry.getJobId() > maxJobID) maxJobID = entry.getJobId();
+    }
+
+
 }
 
 JobsList::JobEntry &JobsList::getJobById(int jobId) {
@@ -431,6 +441,13 @@ bool JobsList::compareEntry(JobEntry entry1, JobEntry entry2) {
     return (entry1.getJobId() < entry2.getJobId());
 }
 
+bool JobsList::isJobIdInList(int jobId) const {
+    for (auto &entry: jList) {
+        if (entry.getJobId()==jobId) return true;
+    }
+    return false;
+}
+
 JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
 
 }
@@ -445,4 +462,30 @@ pid_t ExternalCommand::getPid() const {
 }
 void ExternalCommand::setPid(pid_t pid) {
     ExternalCommand::pid = pid;
+}
+
+void KillCommand::execute() {
+    SmallShell& smash = SmallShell::getInstance();
+    if(cmd_params.size() != 2 || cmd_params[0][0] != '-' || invalid_arg(cmd_params[0].substr(1)) || invalid_arg(cmd_params[1])){
+        cerr << "smash error: kill: invalid arguments" << endl;
+    } else if(!smash.getJobslist().isJobIdInList(stoi(cmd_params[1]))){
+        cerr << "smash error: kill: job-id " << cmd_params[1] << " does not exist" << endl;
+    } else if(kill(smash.getJobslist().getJobById(stoi(cmd_params[1])).getPid(), stoi(cmd_params[0].substr(1))) == -1){
+        perror("smash error: kill failed");
+    } else{
+        cout << "signal number " << cmd_params[0].substr(1) << " was sent to pid " << cmd_params[1] << endl;
+    }
+}
+
+bool KillCommand::invalid_arg(const string &str) const {
+    if(str.empty()) return true;
+   for(int i = 0; i < str.length(); i++) {
+       if(str[i] == '-' && i == 0) continue;
+       if(str[i] < '0' || str[i] > '9') return true;
+   }
+   return false;
+}
+
+KillCommand::KillCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
 }
