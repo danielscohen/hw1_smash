@@ -123,6 +123,8 @@ class JobsList {
 
       int getJobId() const;
 
+      void setStopped(bool mode);
+
   };
  // TODO: Add your data members
 private:
@@ -138,10 +140,13 @@ public:
   JobEntry & getJobById(int jobId);
   void removeJobById(int jobId);
   void removeJobByPID(pid_t pid);
-  JobEntry * getLastJob(int* lastJobId);
-  JobEntry *getLastStoppedJob(int *jobId);
+  JobEntry & getLastJob();
+  JobEntry &getLastStoppedJob();
+  void findMaxJobID();
   static bool compareEntry(JobEntry entry1, JobEntry entry2);
   bool isJobIdInList(int jobId) const;
+  bool empty() const;
+  bool noStoppedJobs() const;
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
@@ -157,7 +162,6 @@ class JobsCommand : public BuiltInCommand {
 
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
-    bool invalid_arg(const string& str) const;
  public:
   KillCommand(const char* cmd_line);
   virtual ~KillCommand() {}
@@ -167,7 +171,7 @@ class KillCommand : public BuiltInCommand {
 class ForegroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  ForegroundCommand(const char* cmd_line, JobsList* jobs);
+  ForegroundCommand(const char* cmd_line);
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
@@ -175,7 +179,7 @@ class ForegroundCommand : public BuiltInCommand {
 class BackgroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  BackgroundCommand(const char* cmd_line, JobsList* jobs);
+  BackgroundCommand(const char* cmd_line);
   virtual ~BackgroundCommand() {}
   void execute() override;
 };
