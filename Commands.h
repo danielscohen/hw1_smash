@@ -137,7 +137,7 @@ class JobsList {
   void removeFinishedJobs();
   JobEntry * getJobById(int jobId);
   void removeJobById(int jobId);
-  JobEntry * getLastJob(int* lastJobId);
+  JobEntry * getLastJob(int lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
   bool compareEntry(JobEntry entry1, JobEntry entry2);
 

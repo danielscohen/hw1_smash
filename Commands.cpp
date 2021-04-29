@@ -377,6 +377,7 @@ bool JobsList::compareEntry(JobEntry entry1, JobEntry entry2) {
     return (entry1.getJobId() < entry2.getJobId());
 }
 
+
 JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
 
 }
