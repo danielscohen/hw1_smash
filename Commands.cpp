@@ -70,7 +70,7 @@ bool _isBackgroundComamnd(const char* cmd_line) {
   return str[str.find_last_not_of(WHITESPACE)] == '&';
 }
 
-void _removeBackgroundSign(string cmd_line) {
+void _removeBackgroundSign(string& cmd_line) {
   const string str(cmd_line);
   // find last character other than spaces
   unsigned int idx = str.find_last_not_of(WHITESPACE);
@@ -204,7 +204,7 @@ Command::Command(const string& cmd_line) : cmdText(cmd_line) {
 
 bool Command::isBackgroundCMD() {
 //    cout << cmd_params.back() << endl;
-    return cmd_params.empty() ? false : cmd_params.back() == "&";
+    return cmd_params.empty() ? false : cmd_params.back().back() == '&';
 }
 
 const string &Command::getCmdText() const {
