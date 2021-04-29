@@ -138,10 +138,12 @@ public:
   JobEntry & getJobById(int jobId);
   void removeJobById(int jobId);
   void removeJobByPID(pid_t pid);
-  JobEntry * getLastJob(int* lastJobId);
+  JobEntry & getLastJob();
   JobEntry *getLastStoppedJob(int *jobId);
+  void findMaxJobID();
   static bool compareEntry(JobEntry entry1, JobEntry entry2);
   bool isJobIdInList(int jobId) const;
+  bool empty() const;
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
@@ -157,7 +159,6 @@ class JobsCommand : public BuiltInCommand {
 
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
-    bool invalid_arg(const string& str) const;
  public:
   KillCommand(const char* cmd_line);
   virtual ~KillCommand() {}
@@ -167,7 +168,7 @@ class KillCommand : public BuiltInCommand {
 class ForegroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  ForegroundCommand(const char* cmd_line, JobsList* jobs);
+  ForegroundCommand(const char* cmd_line);
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
