@@ -16,7 +16,7 @@ class Command {
 // TODO: Add your data members
  protected:
     vector<string> cmd_params;
-    const string& cmdText;
+    const string cmdText;
  public:
   Command(const string&);
 
@@ -100,10 +100,7 @@ class QuitCommand : public BuiltInCommand {
 
 
 
-class JobEntry;
 class JobsList {
-    vector<JobEntry> jList = jList<JobEntry>();
-    int maxJobID;
  public:
   class JobEntry {
    // TODO: Add your data members
@@ -128,18 +125,23 @@ class JobsList {
 
   };
  // TODO: Add your data members
- public:
+private:
+ vector<JobEntry> jList = vector<JobEntry>();
+    int maxJobID;
+public:
   JobsList();
   ~JobsList();
   void addJob(Command *cmd, bool isStopped, pid_t pid);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
-  JobEntry * getJobById(int jobId);
+  JobEntry & getJobById(int jobId);
   void removeJobById(int jobId);
-  JobEntry * getLastJob(int lastJobId);
+  void removeJobByPID(pid_t pid);
+  JobEntry * getLastJob(int* lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
-  bool compareEntry(JobEntry entry1, JobEntry entry2);
+  static bool compareEntry(JobEntry entry1, JobEntry entry2);
+  bool isJobIdInList(int jobId) const;
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
@@ -155,8 +157,9 @@ class JobsCommand : public BuiltInCommand {
 
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
+    bool invalid_arg(const string& str) const;
  public:
-  KillCommand(const char* cmd_line, JobsList* jobs);
+  KillCommand(const char* cmd_line);
   virtual ~KillCommand() {}
   void execute() override;
 };
@@ -201,7 +204,7 @@ public:
 
     void setPrompt(string prompt);
 
-    JobsList &getJobslist() const;
+    JobsList &getJobslist();
 
 private:
     SmallShell();

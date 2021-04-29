@@ -7,6 +7,7 @@
 #include <iomanip>
 #include "Commands.h"
 #include <time.h>
+#include <algorithm>
 
 
 using namespace std;
@@ -69,7 +70,7 @@ bool _isBackgroundComamnd(const char* cmd_line) {
   return str[str.find_last_not_of(WHITESPACE)] == '&';
 }
 
-void _removeBackgroundSign(char* cmd_line) {
+void _removeBackgroundSign(string cmd_line) {
   const string str(cmd_line);
   // find last character other than spaces
   unsigned int idx = str.find_last_not_of(WHITESPACE);
@@ -117,7 +118,10 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     if (firstWord.compare("jobs") == 0) {
         return new JobsCommand(cmd_line, getJobslist());
     }
-    return new ExternalCommand(cmd_line);
+    if (firstWord.compare("kill") == 0) {
+        return new KillCommand(cmd_line);
+    }
+    return new ExternalCommand(cmd_line, getInstance());
 /*
   string cmd_s = _trim(string(cmd_line));
   string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
@@ -142,13 +146,14 @@ void SmallShell::executeCommand(const char *cmd_line) {
     if(cmd->isExternalCMD()){
       pid_t pid = fork();
       if(pid == 0){
+          setpgrp();
           cmd->execute();
       } else if(pid == -1) {
           perror("smash error: fork failed");
       } else{
           if(cmd->isBackgroundCMD()){
               jobslist.removeFinishedJobs();
-              jobslist.addJob(cmd, false, 0);
+              jobslist.addJob(cmd, false, pid);
           } else {
               waitpid(pid, nullptr, 0);
           }
@@ -175,8 +180,8 @@ void SmallShell::setPlastPwd(char *plastPwd) {
     SmallShell::plastPwd = plastPwd;
 }
 
-JobsList &SmallShell::getJobslist() const {
-    return jobslist&;
+JobsList &SmallShell::getJobslist() {
+    return jobslist;
 }
 
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
@@ -198,7 +203,8 @@ Command::Command(const string& cmd_line) : cmdText(cmd_line) {
 }
 
 bool Command::isBackgroundCMD() {
-    return cmd_params.back() == "&";
+//    cout << cmd_params.back() << endl;
+    return cmd_params.empty() ? false : cmd_params.back() == "&";
 }
 
 const string &Command::getCmdText() const {
@@ -216,7 +222,6 @@ ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) 
 
 void ShowPidCommand::execute() {
     cout << "smash pid is " << getpid() << endl;
-    //TODO: Deal with potential error
 }
 
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
@@ -224,9 +229,13 @@ GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_
 }
 
 void GetCurrDirCommand::execute() {
-    char buf[COMMAND_ARGS_MAX_LENGTH + 1]; // +1 needed?
-    cout << getcwd(buf, sizeof(buf)) << endl;
-    //TODO: Deal with potential error
+    char* currentDir = get_current_dir_name();
+    if(currentDir == NULL){
+        perror("smash error: get_current_dir_name failed");
+        return;
+    }
+    cout << currentDir << endl;
+    delete currentDir;
 }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, SmallShell& smash) : BuiltInCommand(cmd_line), smash(smash)  {
@@ -234,6 +243,11 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, SmallShell& smash) : Bu
 }
 
 void ChangeDirCommand::execute() {
+    char* currentDir = get_current_dir_name();
+    if(currentDir == NULL){
+        perror("smash error: get_current_dir_name failed");
+        return;
+    }
     char *plastPwd = smash.getPlastPwd();
     if (cmd_params.size() == 0) { //What happens if size==0?
         return;
@@ -246,8 +260,7 @@ void ChangeDirCommand::execute() {
         if (plastPwd != nullptr) {
             if(chdir(plastPwd) != -1){
                 delete plastPwd;
-                smash.setPlastPwd(get_current_dir_name());
-                //TODO: Deal with potential error
+                smash.setPlastPwd(currentDir);
             } else {
                 perror("smash error: chdir failed");
             }
@@ -260,7 +273,7 @@ void ChangeDirCommand::execute() {
     }
     else {
         delete plastPwd;
-        smash.setPlastPwd(get_current_dir_name());
+        smash.setPlastPwd(currentDir);
         char* path = new char [cmd_params.front().length()+1];
         strcpy(path, cmd_params.front().c_str());
         //should null terminator be removed?
@@ -277,14 +290,20 @@ ExternalCommand::ExternalCommand(const char *cmd_line, SmallShell &smash): Comma
 
 
 void ExternalCommand::execute() {
-    const char* arguments [COMMAND_MAX_ARGS + 2];
+    const char* arguments [4];
     //const char* programName = "sh";
-    arguments[0] = "sh";
-    for (int j = 0;  j < cmd_params.size()+1;  ++j) {     // copy args
-        arguments[j+1] = cmd_params[j].c_str();
-    }
-    arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
-    const char* path = "\"/bin/bash\"";
+    arguments[0] = "bash";
+    arguments[1] = "-c";
+    string s = cmdText;
+    string args = _trim(s);
+    _removeBackgroundSign(args);
+    arguments[2] = args.c_str();
+    arguments[3] = NULL;
+//    for (int j = 0;  j < cmd_params.size()+1;  ++j) {     // copy args
+//        arguments[j+1] = cmd_params[j].c_str();
+//    }
+//    arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
+    const char* path = "/bin/bash";
     execv(path, (char*const*) arguments);
 }
 
@@ -326,7 +345,7 @@ void JobsList::addJob(Command *cmd, bool isStopped, pid_t pid) {
         perror("smash error: time failed");
         return;
     }
-    jList.push_back(new JobEntry(++maxJobID, pid, t, cmd->getCmdText(), isStopped ));
+    jList.push_back(JobEntry(++maxJobID, pid, t, cmd->getCmdText(), isStopped ));
 
 }
 
@@ -335,10 +354,9 @@ void JobsList::printJobsList() {
     sort(jList.begin(), jList.end(), compareEntry);
     for (auto &entry: jList) {
         cout <<'['<<entry.getJobId()<<"] "<<entry.getCmd()<<" : "<<entry.getPid()<<" "
-        <<difftime(entry.getInsertTime(),time(nullptr))<<" secs";
+        <<difftime(time(nullptr), entry.getInsertTime())<<" secs";
         if (entry.getStopped()) cout<<" (stopped)";
         cout<<endl;
-        return;
     }
 }
 
@@ -347,10 +365,47 @@ void JobsList::killAllJobs() {
 }
 
 void JobsList::removeFinishedJobs() {
+    if(jList.empty()) return;
+    int status;
+    pid_t jobStatus = waitpid(-1,&status, WNOHANG);
+    while(jobStatus != 0){
+        if(jobStatus == -1){
+            perror("smash error: waitpid failed");
+            return;
+
+        }
+        removeJobByPID(jobStatus);
+        if (jList.empty()){
+            maxJobID = 0;
+            return;
+        }
+        jobStatus = waitpid(-1, &status, WNOHANG);
+    }
+//    vector<int> toRemove;
+//    for (auto &entry: jList) {
+//        int status;
+//        pid_t jobStatus = waitpid(entry.getPid(), &status, WNOHANG);
+//        if(jobStatus == -1){
+//            perror("smash error: waitpid failed");
+//            return;
+//        }
+//        if(jobStatus == entry.getPid() && WIFEXITED(status)){
+//            toRemove.push_back(entry.getJobId());
+//        }
+//    }
+//
+//    for (auto &i: toRemove) {
+//        removeJobById(i);
+//    }
+    maxJobID = 0;
+    for (auto &entry: jList) {
+        if (entry.getJobId() > maxJobID) maxJobID = entry.getJobId();
+    }
+
 
 }
 
-JobEntry *JobsList::getJobById(int jobId) {
+JobsList::JobEntry &JobsList::getJobById(int jobId) {
     for (auto &entry: jList) {
         if (entry.getJobId()==jobId) return entry;
     }
@@ -361,15 +416,24 @@ void JobsList::removeJobById(int jobId) {
     for (auto it = jList.begin(); it != jList.end(); ++it) {
         if (it->getJobId() == jobId){
             jList.erase(it);
+            return;
         }
     }
 }
 
-JobEntry *JobsList::getLastJob(int *lastJobId) {
+void JobsList::removeJobByPID(pid_t pid) {
+    for (auto it = jList.begin(); it != jList.end(); ++it) {
+        if (it->getPid() == pid){
+            jList.erase(it);
+            return;
+        }
+    }
+}
+JobsList::JobEntry *JobsList::getLastJob(int *lastJobId) {
     return nullptr;
 }
 
-JobEntry *JobsList::getLastStoppedJob(int *jobId) {
+JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
     return nullptr;
 }
 
@@ -377,6 +441,13 @@ bool JobsList::compareEntry(JobEntry entry1, JobEntry entry2) {
     return (entry1.getJobId() < entry2.getJobId());
 }
 
+
+bool JobsList::isJobIdInList(int jobId) const {
+    for (auto &entry: jList) {
+        if (entry.getJobId()==jobId) return true;
+    }
+    return false;
+}
 
 JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
 
@@ -392,4 +463,30 @@ pid_t ExternalCommand::getPid() const {
 }
 void ExternalCommand::setPid(pid_t pid) {
     ExternalCommand::pid = pid;
+}
+
+void KillCommand::execute() {
+    SmallShell& smash = SmallShell::getInstance();
+    if(cmd_params.size() != 2 || cmd_params[0][0] != '-' || invalid_arg(cmd_params[0].substr(1)) || invalid_arg(cmd_params[1])){
+        cerr << "smash error: kill: invalid arguments" << endl;
+    } else if(!smash.getJobslist().isJobIdInList(stoi(cmd_params[1]))){
+        cerr << "smash error: kill: job-id " << cmd_params[1] << " does not exist" << endl;
+    } else if(kill(smash.getJobslist().getJobById(stoi(cmd_params[1])).getPid(), stoi(cmd_params[0].substr(1))) == -1){
+        perror("smash error: kill failed");
+    } else{
+        cout << "signal number " << cmd_params[0].substr(1) << " was sent to pid " << cmd_params[1] << endl;
+    }
+}
+
+bool KillCommand::invalid_arg(const string &str) const {
+    if(str.empty()) return true;
+   for(int i = 0; i < str.length(); i++) {
+       if(str[i] == '-' && i == 0) continue;
+       if(str[i] < '0' || str[i] > '9') return true;
+   }
+   return false;
+}
+
+KillCommand::KillCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
 }
