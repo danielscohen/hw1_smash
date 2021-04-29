@@ -161,7 +161,9 @@ void SmallShell::executeCommand(const char *cmd_line) {
               jobslist.removeFinishedJobs();
               jobslist.addJob(cmd, false, pid);
           } else {
+              isConcurrentForegound = true;
               waitpid(pid, nullptr, 0);
+              isConcurrentForegound = false;
           }
       }
   } else {
@@ -188,6 +190,10 @@ void SmallShell::setPlastPwd(char *plastPwd) {
 
 JobsList &SmallShell::getJobslist() {
     return jobslist;
+}
+
+bool SmallShell::getIsConcurrentForegound() const {
+    return isConcurrentForegound;
 }
 
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)

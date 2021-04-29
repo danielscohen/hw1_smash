@@ -198,11 +198,15 @@ class SmallShell {
   string prompt;
     char* plastPwd;
     JobsList jobslist;
+    bool isConcurrentForegound = false;
+
 public:
     char * getPlastPwd() const;
 
     void setPlastPwd(char *plastPwd);
     //should be initiated to NULL?
+    bool getIsConcurrentForegound() const;
+
 public:
     string getPrompt() const;
 
