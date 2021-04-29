@@ -92,8 +92,9 @@ class ShowPidCommand : public BuiltInCommand {
 
 class JobsList;
 class QuitCommand : public BuiltInCommand {
+public:
 // TODO: Add your data members public:
-  QuitCommand(const char* cmd_line, JobsList* jobs);
+  QuitCommand(const char* cmd_line);
   virtual ~QuitCommand() {}
   void execute() override;
 };
@@ -147,6 +148,7 @@ public:
   bool isJobIdInList(int jobId) const;
   bool empty() const;
   bool noStoppedJobs() const;
+  void printAllKilledJobs() const;
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
