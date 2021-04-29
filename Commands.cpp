@@ -124,6 +124,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     if (firstWord.compare("fg") == 0) {
         return new ForegroundCommand(cmd_line);
     }
+    if (firstWord.compare("bg") == 0) {
+        return new BackgroundCommand(cmd_line);
+    }
     return new ExternalCommand(cmd_line, getInstance());
 /*
   string cmd_s = _trim(string(cmd_line));
@@ -334,6 +337,11 @@ pid_t JobsList::JobEntry::getPid() const {
     return pid;
 }
 
+void JobsList::JobEntry::setStopped(bool mode) {
+    isStopped = mode;
+
+}
+
 JobsList::JobsList() :  maxJobID(0)  {
 
 }
@@ -433,8 +441,12 @@ JobsList::JobEntry &JobsList::getLastJob() {
     return getJobById(maxJobID);
 }
 
-JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
-    return nullptr;
+JobsList::JobEntry &JobsList::getLastStoppedJob() {
+    int jobID = 1;
+    for (auto &entry: jList) {
+        if (entry.getStopped()) jobID = entry.getJobId() ;
+    }
+    return getJobById(jobID);
 }
 
 bool JobsList::compareEntry(JobEntry entry1, JobEntry entry2) {
@@ -457,6 +469,13 @@ void JobsList::findMaxJobID() {
 
 bool JobsList::empty() const {
     return jList.empty();
+}
+
+bool JobsList::noStoppedJobs() const {
+    for (auto &entry: jList) {
+        if (entry.getStopped()) return false;
+    }
+    return true;
 }
 
 JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
@@ -516,12 +535,12 @@ void ForegroundCommand::execute() {
 
     } else if (cmd_params.size() == 1 && !jobsList.isJobIdInList(stoi(cmd_params[0]))) {
         cerr << "smash error: fg: job-id " << cmd_params[0] << " does not exist" << endl;
-    } else if (cmd_params.size() == -1) {
+    } else if (cmd_params.size() == 1) {
         JobsList::JobEntry &job = jobsList.getJobById(stoi(cmd_params[0]));
-        if (kill(job.getPid(), SIGCONT)) {
+        cout << job.getCmd() << " : " << job.getPid() << endl;
+        if (kill(job.getPid(), SIGCONT) == -1) {
             perror("smash error: kill failed");
         } else {
-            cout << job.getCmd() << " : " << job.getPid() << endl;
             if (waitpid(job.getPid(), NULL, 0) == -1) {
                 perror("smash error: waitpid failed");
             } else {
@@ -531,10 +550,10 @@ void ForegroundCommand::execute() {
         }
     } else {
         JobsList::JobEntry &job = jobsList.getLastJob();
-        if (kill(job.getPid(), SIGCONT)) {
+        cout << job.getCmd() << " : " << job.getPid() << endl;
+        if (kill(job.getPid(), SIGCONT) == -1) {
             perror("smash error: kill failed");
         } else {
-            cout << job.getCmd() << " : " << job.getPid() << endl;
             if (waitpid(job.getPid(), NULL, 0) == -1) {
                 perror("smash error: waitpid failed");
             } else {
@@ -545,4 +564,45 @@ void ForegroundCommand::execute() {
 
 
     }
+}
+
+BackgroundCommand::BackgroundCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+    SmallShell &smash = SmallShell::getInstance();
+    JobsList &jobsList = smash.getJobslist();
+    if (cmd_params.size() > 1 || (cmd_params.size() == 1 && invalid_arg(cmd_params[0]))) {
+        cerr << "smash error: bg: invalid arguments" << endl;
+    } else if (cmd_params.empty() && jobsList.noStoppedJobs()) {
+        cerr << "smash error: bg: there is no stopped jobs to resume" << endl;
+
+    } else if (cmd_params.size() == 1 && !jobsList.isJobIdInList(stoi(cmd_params[0]))) {
+        cerr << "smash error: bg: job-id " << cmd_params[0] << " does not exist" << endl;
+    } else if (cmd_params.size() == 1 && !jobsList.getJobById(stoi(cmd_params[0])).getStopped()){
+        cerr << "smash error: bg: job-id " << cmd_params[0] << " is already running in the background" << endl;
+    } else if (cmd_params.size() == 1) {
+        JobsList::JobEntry &job = jobsList.getJobById(stoi(cmd_params[0]));
+        cout << job.getCmd() << " : " << job.getPid() << endl;
+        if (kill(job.getPid(), SIGCONT) == -1) {
+            perror("smash error: kill failed");
+        } else {
+            job.setStopped(false);
+        }
+
+    } else {
+        JobsList::JobEntry &job = jobsList.getLastStoppedJob();
+        cout << job.getCmd() << " : " << job.getPid() << endl;
+        if (kill(job.getPid(), SIGCONT) == -1) {
+            perror("smash error: kill failed");
+        } else {
+            job.setStopped(false);
+            }
+
+        }
+
+
+}
+
+
+
+void BackgroundCommand::execute() {
+
 }

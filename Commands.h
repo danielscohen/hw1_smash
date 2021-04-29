@@ -123,6 +123,8 @@ class JobsList {
 
       int getJobId() const;
 
+      void setStopped(bool mode);
+
   };
  // TODO: Add your data members
 private:
@@ -139,11 +141,12 @@ public:
   void removeJobById(int jobId);
   void removeJobByPID(pid_t pid);
   JobEntry & getLastJob();
-  JobEntry *getLastStoppedJob(int *jobId);
+  JobEntry &getLastStoppedJob();
   void findMaxJobID();
   static bool compareEntry(JobEntry entry1, JobEntry entry2);
   bool isJobIdInList(int jobId) const;
   bool empty() const;
+  bool noStoppedJobs() const;
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
@@ -176,7 +179,7 @@ class ForegroundCommand : public BuiltInCommand {
 class BackgroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-  BackgroundCommand(const char* cmd_line, JobsList* jobs);
+  BackgroundCommand(const char* cmd_line);
   virtual ~BackgroundCommand() {}
   void execute() override;
 };
