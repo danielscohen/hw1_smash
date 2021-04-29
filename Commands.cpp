@@ -127,6 +127,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     if (firstWord.compare("bg") == 0) {
         return new BackgroundCommand(cmd_line);
     }
+    if (firstWord.compare("quit") == 0) {
+        return new QuitCommand(cmd_line);
+    }
     return new ExternalCommand(cmd_line, getInstance());
 /*
   string cmd_s = _trim(string(cmd_line));
@@ -227,6 +230,7 @@ bool BuiltInCommand::isExternalCMD() {return false;}
 bool ExternalCommand::isExternalCMD() {return true;}
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
    if(!cmd_params.empty() && cmd_params.back() == "&") cmd_params.pop_back();
+   else if(!cmd_params.empty() && cmd_params.back().back() == '&') cmd_params.back().pop_back();
 }
 
 ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
@@ -378,7 +382,10 @@ void JobsList::printJobsList() {
 }
 
 void JobsList::killAllJobs() {
-
+    for (auto &entry: jList) {
+        if(kill(entry.getPid(), SIGKILL) == -1)
+            perror("smash error: waitpid failed");
+    }
 }
 
 void JobsList::removeFinishedJobs() {
@@ -483,6 +490,17 @@ bool JobsList::noStoppedJobs() const {
         if (entry.getStopped()) return false;
     }
     return true;
+}
+
+void JobsList::printAllKilledJobs() const {
+    cout << "smash: sending SIGKILL signal to " << jList.size() << " jobs" << endl;
+    for (auto &entry: jList) {
+        cout << entry.getPid() << ": " << entry.getCmd() << endl;
+    }
+
+    cout << "Linux-shell:" << endl;
+
+
 }
 
 JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
@@ -611,5 +629,19 @@ BackgroundCommand::BackgroundCommand(const char *cmd_line) : BuiltInCommand(cmd_
 
 
 void BackgroundCommand::execute() {
+
+}
+
+QuitCommand::QuitCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
+}
+
+void QuitCommand::execute() {
+    JobsList &jobsList = SmallShell::getInstance().getJobslist();
+    if(!cmd_params.empty() && cmd_params[0] == "kill"){
+        jobsList.killAllJobs();
+        jobsList.printAllKilledJobs();
+    }
+    exit(0);
 
 }
