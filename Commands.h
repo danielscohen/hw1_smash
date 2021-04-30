@@ -134,7 +134,7 @@ private:
 public:
   JobsList();
   ~JobsList();
-  void addJob(Command *cmd, bool isStopped, pid_t pid);
+  void addJob(const string& cmdTxt, bool isStopped, pid_t pid);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
@@ -149,6 +149,7 @@ public:
   bool empty() const;
   bool noStoppedJobs() const;
   void printAllKilledJobs() const;
+  void addJobAtJobId(const string &cmdText, int jobId, pid_t pid);
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
@@ -199,15 +200,29 @@ class SmallShell {
   // TODO: Add your data members
   string prompt;
     char* plastPwd;
+public:
+    int getFgJobId() const;
+
+    void setFgJobId(int fgJobId);
+
+    const string &getFgJobCmd() const;
+
+    void setFgJobCmd(const string &fgJobCmd);
+
+private:
     JobsList jobslist;
-    bool isConcurrentForegound = false;
+    pid_t fgJobPid = 0;
+    int fgJobId = 0;
+    string fgJobCMD;
 
 public:
+    void setFgJobPid(pid_t fgJobPid);
+
     char * getPlastPwd() const;
 
     void setPlastPwd(char *plastPwd);
     //should be initiated to NULL?
-    bool getIsConcurrentForegound() const;
+    pid_t getFgJobPid() const;
 
 public:
     string getPrompt() const;

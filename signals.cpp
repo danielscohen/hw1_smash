@@ -9,25 +9,35 @@ using namespace std;
 void ctrlZHandler(int sig_num) {
     cout<<"smash: got ctrl-Z"<<endl;
     SmallShell &smash = SmallShell::getInstance();
-    if (smash.getIsConcurrentForegound()) {
+    pid_t fgJobPid = smash.getFgJobPid();
+    int fgJobId = smash.getFgJobId();
+    string fgJobCMD = smash.getFgJobCmd();
+    if (fgJobPid != 0) {
         JobsList& jobsList = smash.getJobslist();
-        pid_t stopped_pid = getpid();
-        jobsList.removeJobByPID(stopped_pid);
-        kill(stopped_pid, SIGSTOP);
-        cout<<" smash: process " <<stopped_pid<<"was stopped"<<endl;
+        if(fgJobId != 0){
+            jobsList.addJobAtJobId(fgJobCMD,fgJobId, fgJobPid);
+        } else{
+            jobsList.addJob(fgJobCMD, true, fgJobPid);
+        }
+        if(kill(fgJobPid, SIGTSTP) == -1){
+            perror("smash error: kill failed");
+        }
+        cout << "smash: process " << fgJobPid <<" was stopped" << endl;
     }
-    return;
 }
 
 void ctrlCHandler(int sig_num) {
     cout<<"smash: got ctrl-C"<<endl;
     SmallShell &smash = SmallShell::getInstance();
-    if (smash.getIsConcurrentForegound()) {
-        pid_t killed_pid = getpid();
-        kill(killed_pid, SIGKILL);
-        cout<<" smash: process " <<killed_pid<<"was killed"<<endl;
+    pid_t fgJobPid = smash.getFgJobPid();
+    int fgJobId = smash.getFgJobId();
+    string fgJobCMD = smash.getFgJobCmd();
+    if (fgJobPid != 0) {
+        if(kill(fgJobPid, SIGKILL) == -1){
+            perror("smash error: kill failed");
+        }
+        cout << "smash: process " << fgJobPid <<" was killed" << endl;
     }
-    return;
 }
 
 void alarmHandler(int sig_num) {

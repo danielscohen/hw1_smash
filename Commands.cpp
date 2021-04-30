@@ -162,11 +162,12 @@ void SmallShell::executeCommand(const char *cmd_line) {
       } else{
           if(cmd->isBackgroundCMD()){
               jobslist.removeFinishedJobs();
-              jobslist.addJob(cmd, false, pid);
+              jobslist.addJob(cmd->getCmdText(), false, pid);
           } else {
-              isConcurrentForegound = true;
-              waitpid(pid, nullptr, 0);
-              isConcurrentForegound = false;
+              fgJobPid = pid;
+              fgJobCMD = cmd->getCmdText();
+              waitpid(pid, nullptr, WUNTRACED);
+              fgJobPid = 0;
           }
       }
   } else {
@@ -195,8 +196,28 @@ JobsList &SmallShell::getJobslist() {
     return jobslist;
 }
 
-bool SmallShell::getIsConcurrentForegound() const {
-    return isConcurrentForegound;
+pid_t SmallShell::getFgJobPid() const {
+    return fgJobPid;
+}
+
+int SmallShell::getFgJobId() const {
+    return fgJobId;
+}
+
+void SmallShell::setFgJobId(int fgJobId) {
+    SmallShell::fgJobId = fgJobId;
+}
+
+const string &SmallShell::getFgJobCmd() const {
+    return fgJobCMD;
+}
+
+void SmallShell::setFgJobCmd(const string &fgJobCmd) {
+    fgJobCMD = fgJobCmd;
+}
+
+void SmallShell::setFgJobPid(pid_t fgJobPid) {
+    SmallShell::fgJobPid = fgJobPid;
 }
 
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
@@ -360,13 +381,13 @@ JobsList::~JobsList() {
 
 }
 
-void JobsList::addJob(Command *cmd, bool isStopped, pid_t pid) {
+void JobsList::addJob( const string& cmdTxt, bool isStopped, pid_t pid) {
     time_t t = time(nullptr);
     if(t == -1){
         perror("smash error: time failed");
         return;
     }
-    jList.push_back(JobEntry(++maxJobID, pid, t, cmd->getCmdText(), isStopped ));
+    jList.push_back(JobEntry(++maxJobID, pid, t, cmdTxt, isStopped ));
 
 }
 
@@ -503,6 +524,17 @@ void JobsList::printAllKilledJobs() const {
 
 }
 
+void JobsList::addJobAtJobId(const string &cmdText, int jobId, pid_t pid) {
+    time_t t = time(nullptr);
+    if(t == -1){
+        perror("smash error: time failed");
+        return;
+    }
+    jList.push_back(JobEntry(jobId, pid, t, cmdText, true));
+
+
+}
+
 JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
 
 }
@@ -537,7 +569,7 @@ void KillCommand::execute() {
     } else if(kill(smash.getJobslist().getJobById(stoi(cmd_params[1])).getPid(), stoi(cmd_params[0].substr(1))) == -1){
         perror("smash error: kill failed");
     } else{
-        cout << "signal number " << cmd_params[0].substr(1) << " was sent to pid " << cmd_params[1] << endl;
+        cout << "signal number " << cmd_params[0].substr(1) << " was sent to pid " << smash.getJobslist().getJobById(stoi(cmd_params[1])).getPid() << endl;
     }
 }
 
@@ -563,27 +595,36 @@ void ForegroundCommand::execute() {
     } else if (cmd_params.size() == 1) {
         JobsList::JobEntry &job = jobsList.getJobById(stoi(cmd_params[0]));
         cout << job.getCmd() << " : " << job.getPid() << endl;
+        smash.setFgJobId(job.getJobId());
+        smash.setFgJobCmd(job.getCmd());
+        smash.setFgJobPid(job.getPid());
         if (kill(job.getPid(), SIGCONT) == -1) {
             perror("smash error: kill failed");
         } else {
-            if (waitpid(job.getPid(), NULL, 0) == -1) {
+            if (waitpid(job.getPid(), NULL, WUNTRACED) == -1) {
                 perror("smash error: waitpid failed");
             } else {
                 jobsList.removeJobById(job.getJobId());
             }
-
+            smash.setFgJobPid(0);
+            smash.setFgJobId(0);
         }
     } else {
         JobsList::JobEntry &job = jobsList.getLastJob();
         cout << job.getCmd() << " : " << job.getPid() << endl;
+        smash.setFgJobId(job.getJobId());
+        smash.setFgJobCmd(job.getCmd());
+        smash.setFgJobPid(job.getPid());
         if (kill(job.getPid(), SIGCONT) == -1) {
             perror("smash error: kill failed");
         } else {
-            if (waitpid(job.getPid(), NULL, 0) == -1) {
+            if (waitpid(job.getPid(), NULL, WUNTRACED) == -1) {
                 perror("smash error: waitpid failed");
             } else {
                 jobsList.removeJobById(job.getJobId());
             }
+            smash.setFgJobPid(0);
+            smash.setFgJobId(0);
 
         }
 
