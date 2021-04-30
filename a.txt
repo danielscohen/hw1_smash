@@ -1,0 +1,14 @@
+a.out
+a.txt
+cmake-build-debug
+CMakeLists.txt
+Commands.cpp
+Commands.h
+main.cpp
+Makefile
+README.txt
+signals.cpp
+signals.h
+smash.cpp
+test_expected_output1.txt
+test_input1.txt

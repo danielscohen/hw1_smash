@@ -245,6 +245,7 @@ private:
   }
   ~SmallShell();
   void executeCommand(const char* cmd_line);
+  void pipeFunction(string cmd_line);
   // TODO: add extra methods as needed
 };
 

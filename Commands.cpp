@@ -103,6 +103,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 	// For example:
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    if(cmd_s.find("|") != string::npos){
+        pipeFunction(cmd_line);
+    }
     if (firstWord.compare("chprompt") == 0) {
         return new CHPromptCommand(cmd_line, getInstance());
     }
@@ -218,6 +221,51 @@ void SmallShell::setFgJobCmd(const string &fgJobCmd) {
 
 void SmallShell::setFgJobPid(pid_t fgJobPid) {
     SmallShell::fgJobPid = fgJobPid;
+}
+
+void SmallShell::pipeFunction(string cmd_line) {
+    int fd[2];
+    if(pipe(fd) == -1){
+        perror("smash error: pipe failed");
+    }
+    size_t pipe_pos = cmd_line.find("|");
+    bool isErrorPipe = (cmd_line.find("|&") != string::npos);
+    string _cmd1 = cmd_line.substr(0, pipe_pos);
+    string _cmd2 = isErrorPipe ? cmd_line.substr(pipe_pos + 2) : cmd_line.substr(pipe_pos + 1);
+
+    Command* cmd1 = CreateCommand(_cmd1.c_str());
+    Command* cmd2 = CreateCommand(_cmd2.c_str());
+        pid_t pid1 = fork();
+        if(pid1 == 0){
+            setpgrp();
+            if(isErrorPipe){
+                dup2(fd[1], 2);
+            } else {
+                dup2(fd[1], 1);
+            }
+            close(fd[0]);
+            close(fd[1]);
+            cmd1->execute();
+        } else if(pid1 == -1) {
+            perror("smash error: fork failed");
+        }
+        pid_t pid2 = fork();
+        if(pid2 == 0){
+            setpgrp();
+            dup2(fd[0], 0);
+            close(fd[0]);
+            close(fd[1]);
+            cmd2->execute();
+        } else if(pid2 == -1) {
+            perror("smash error: fork failed");
+        } else{
+            close(fd[0]);
+            close(fd[1]);
+            waitpid(pid1, nullptr, WUNTRACED);
+            waitpid(pid2, nullptr, WUNTRACED);
+    }
+
+
 }
 
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
