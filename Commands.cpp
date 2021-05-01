@@ -8,6 +8,8 @@
 #include "Commands.h"
 #include <time.h>
 #include <algorithm>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 
 using namespace std;
@@ -103,9 +105,6 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 	// For example:
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
-    if(cmd_s.find("|") != string::npos){
-        pipeFunction(cmd_line);
-    }
     if (firstWord.compare("chprompt") == 0) {
         return new CHPromptCommand(cmd_line, getInstance());
     }
@@ -153,30 +152,35 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
-  Command* cmd = CreateCommand(cmd_line);
-    jobslist.removeFinishedJobs();
-    if(cmd->isExternalCMD()){
-      pid_t pid = fork();
-      if(pid == 0){
-          setpgrp();
-          cmd->execute();
-      } else if(pid == -1) {
-          perror("smash error: fork failed");
-      } else{
-          if(cmd->isBackgroundCMD()){
-              jobslist.removeFinishedJobs();
-              jobslist.addJob(cmd->getCmdText(), false, pid);
-          } else {
-              fgJobPid = pid;
-              fgJobCMD = cmd->getCmdText();
-              waitpid(pid, nullptr, WUNTRACED);
-              fgJobPid = 0;
-          }
-      }
-  } else {
-      cmd->execute();
-  }
-  // Please note that you must fork smash process for some commands (e.g., external commands....)
+    if(string(cmd_line).find("|") != string::npos) {
+        pipeFunction(cmd_line);
+    } else if(string(cmd_line).find(">") != string::npos){
+        redirectFunction(cmd_line);
+    } else {
+        Command *cmd = CreateCommand(cmd_line);
+        jobslist.removeFinishedJobs();
+        if (cmd->isExternalCMD()) {
+            pid_t pid = fork();
+            if (pid == 0) {
+                setpgrp();
+                cmd->execute();
+            } else if (pid == -1) {
+                perror("smash error: fork failed");
+            } else {
+                if (cmd->isBackgroundCMD()) {
+                    jobslist.removeFinishedJobs();
+                    jobslist.addJob(cmd->getCmdText(), false, pid);
+                } else {
+                    fgJobPid = pid;
+                    fgJobCMD = cmd->getCmdText();
+                    waitpid(pid, nullptr, WUNTRACED);
+                    fgJobPid = 0;
+                }
+            }
+        } else {
+            cmd->execute();
+        }
+    }// Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
 string SmallShell::getPrompt() const {
@@ -239,12 +243,24 @@ void SmallShell::pipeFunction(string cmd_line) {
         if(pid1 == 0){
             setpgrp();
             if(isErrorPipe){
-                dup2(fd[1], 2);
+                if(dup2(fd[1], 2) == -1){
+                    perror("smash error: dup2 failed");
+                    return;
+                }
             } else {
-                dup2(fd[1], 1);
+                if(dup2(fd[1], 1) == -1){
+                    perror("smash error: dup2 failed");
+                    return;
+                }
             }
-            close(fd[0]);
-            close(fd[1]);
+            if(close(fd[0]) == -1){
+                perror("smash error: close failed");
+                return;
+            }
+            if(close(fd[1]) == -1){
+                perror("smash error: close failed");
+                return;
+            }
             cmd1->execute();
         } else if(pid1 == -1) {
             perror("smash error: fork failed");
@@ -252,17 +268,81 @@ void SmallShell::pipeFunction(string cmd_line) {
         pid_t pid2 = fork();
         if(pid2 == 0){
             setpgrp();
-            dup2(fd[0], 0);
-            close(fd[0]);
-            close(fd[1]);
+            if(dup2(fd[0], 0) == -1){
+                perror("smash error: dup2 failed");
+                return;
+            }
+            if(close(fd[0]) == -1){
+                perror("smash error: close failed");
+                return;
+            }
+            if(close(fd[1]) == -1){
+                perror("smash error: close failed");
+                return;
+            }
             cmd2->execute();
         } else if(pid2 == -1) {
             perror("smash error: fork failed");
         } else{
-            close(fd[0]);
-            close(fd[1]);
+            if(close(fd[0]) == -1){
+                perror("smash error: close failed");
+                return;
+            }
+            if(close(fd[1]) == -1){
+                perror("smash error: close failed");
+                return;
+            }
             waitpid(pid1, nullptr, WUNTRACED);
             waitpid(pid2, nullptr, WUNTRACED);
+    }
+
+
+}
+
+void SmallShell::redirectFunction(string cmd_line) {
+    size_t red_pos = cmd_line.find(">");
+    bool isAppend = (cmd_line.find(">>") != string::npos);
+    string _cmd = cmd_line.substr(0, red_pos);
+    Command* cmd = CreateCommand(_cmd.c_str());
+    cmd_line = _trim(cmd_line);
+    _removeBackgroundSign(cmd_line);
+    red_pos = cmd_line.find(">");
+    string file = isAppend ? _trim(cmd_line.substr(red_pos + 2)) : _trim(cmd_line.substr(red_pos + 1));
+    int fd;
+    if(isAppend) {
+        fd = open(file.c_str(), O_RDWR | O_CREAT | O_APPEND);
+    } else {
+        fd = open(file.c_str(), O_RDWR | O_CREAT);
+    }
+    if(fd == -1){
+        perror("smash error: open failed");
+        return;
+    }
+    int oldOutFd = dup(1);
+    if(oldOutFd == -1){
+        perror("smash error: dup failed");
+        return;
+    }
+    int dup2Res = dup2(fd, 1);
+    if(dup2Res == -1){
+        perror("smash error: dup2 failed");
+        return;
+    }
+
+
+    pid_t pid = fork();
+    if(pid == 0){
+        setpgrp();
+        cmd->execute();
+    } else if(pid == -1) {
+        perror("smash error: fork failed");
+    } else{
+        waitpid(pid, nullptr, WUNTRACED);
+        dup2Res = dup2(oldOutFd, 1);
+        if(dup2Res == -1){
+            perror("smash error: dup2 failed");
+            return;
+        }
     }
 
 
