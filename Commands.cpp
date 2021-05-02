@@ -245,23 +245,24 @@ void SmallShell::pipeFunction(string cmd_line) {
             if(isErrorPipe){
                 if(dup2(fd[1], 2) == -1){
                     perror("smash error: dup2 failed");
-                    return;
+                    exit(0);
                 }
             } else {
                 if(dup2(fd[1], 1) == -1){
                     perror("smash error: dup2 failed");
-                    return;
+                    exit(0);
                 }
             }
             if(close(fd[0]) == -1){
                 perror("smash error: close failed");
-                return;
+                exit(0);
             }
             if(close(fd[1]) == -1){
                 perror("smash error: close failed");
-                return;
+                exit(0);
             }
             cmd1->execute();
+            exit(0);
         } else if(pid1 == -1) {
             perror("smash error: fork failed");
         }
@@ -270,17 +271,18 @@ void SmallShell::pipeFunction(string cmd_line) {
             setpgrp();
             if(dup2(fd[0], 0) == -1){
                 perror("smash error: dup2 failed");
-                return;
+                exit(0);
             }
             if(close(fd[0]) == -1){
                 perror("smash error: close failed");
-                return;
+                exit(0);
             }
             if(close(fd[1]) == -1){
                 perror("smash error: close failed");
-                return;
+                exit(0);
             }
             cmd2->execute();
+            exit(0);
         } else if(pid2 == -1) {
             perror("smash error: fork failed");
         } else{
@@ -310,9 +312,9 @@ void SmallShell::redirectFunction(string cmd_line) {
     string file = isAppend ? _trim(cmd_line.substr(red_pos + 2)) : _trim(cmd_line.substr(red_pos + 1));
     int fd;
     if(isAppend) {
-        fd = open(file.c_str(), O_RDWR | O_CREAT | O_APPEND);
+        fd = open(file.c_str(), O_RDWR | O_CREAT | O_APPEND, S_IRWXU);
     } else {
-        fd = open(file.c_str(), O_RDWR | O_CREAT);
+        fd = open(file.c_str(), O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
     }
     if(fd == -1){
         perror("smash error: open failed");
@@ -328,24 +330,34 @@ void SmallShell::redirectFunction(string cmd_line) {
         perror("smash error: dup2 failed");
         return;
     }
-
-
-    pid_t pid = fork();
-    if(pid == 0){
-        setpgrp();
-        cmd->execute();
-    } else if(pid == -1) {
-        perror("smash error: fork failed");
-    } else{
-        waitpid(pid, nullptr, WUNTRACED);
-        dup2Res = dup2(oldOutFd, 1);
-        if(dup2Res == -1){
-            perror("smash error: dup2 failed");
-            return;
-        }
+    if (close(fd) == -1) {
+        perror("smash error: close failed");
+        return;
     }
 
 
+    if(cmd->isExternalCMD()) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            setpgrp();
+            cmd->execute();
+        } else if (pid == -1) {
+            perror("smash error: fork failed");
+        } else {
+            waitpid(pid, nullptr, WUNTRACED);
+            }
+
+    } else {
+        cmd->execute();
+    }
+    dup2Res = dup2(oldOutFd, 1);
+    if (dup2Res == -1) {
+        perror("smash error: dup2 failed");
+        return;
+    }
+    if (close(oldOutFd) == -1) {
+        perror("smash error: close failed");
+    }
 }
 
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
