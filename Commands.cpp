@@ -826,3 +826,25 @@ void QuitCommand::execute() {
     exit(0);
 
 }
+
+CatCommand::CatCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
+}
+
+void CatCommand::execute() {
+    if (cmd_params.empty()) {
+        cerr << "smash error: cat: not enough arguments" << endl;
+        return;
+    }
+    for (auto &file: cmd_params) {
+        int fd = open(file.c_str(), O_RDONLY);
+        if(fd == -1) {
+            perror("smash error: open failed");
+            return;
+        }
+
+    }
+
+
+
+}
