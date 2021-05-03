@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <memory>
 
 
 using namespace std;
@@ -101,41 +102,41 @@ SmallShell::~SmallShell() {
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
-Command * SmallShell::CreateCommand(const char* cmd_line) {
+shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
 	// For example:
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
     if (firstWord.compare("chprompt") == 0) {
-        return new CHPromptCommand(cmd_line, getInstance());
+        return make_shared<CHPromptCommand> (cmd_line, getInstance());
     }
     if (firstWord.compare("showpid") == 0) {
-        return new ShowPidCommand(cmd_line);
+        return make_shared<ShowPidCommand> (cmd_line);
     }
     if (firstWord.compare("pwd") == 0) {
-        return new GetCurrDirCommand(cmd_line);
+        return make_shared<GetCurrDirCommand> (cmd_line);
     }
     if (firstWord.compare("cd") == 0) {
-        return new ChangeDirCommand(cmd_line, getInstance());
+        return make_shared<ChangeDirCommand> (cmd_line, getInstance());
     }
     if (firstWord.compare("jobs") == 0) {
-        return new JobsCommand(cmd_line, getJobslist());
+        return make_shared<JobsCommand> (cmd_line, getJobslist());
     }
     if (firstWord.compare("kill") == 0) {
-        return new KillCommand(cmd_line);
+        return make_shared<KillCommand> (cmd_line);
     }
     if (firstWord.compare("fg") == 0) {
-        return new ForegroundCommand(cmd_line);
+        return make_shared<ForegroundCommand> (cmd_line);
     }
     if (firstWord.compare("bg") == 0) {
-        return new BackgroundCommand(cmd_line);
+        return make_shared<BackgroundCommand> (cmd_line);
     }
     if (firstWord.compare("quit") == 0) {
-        return new QuitCommand(cmd_line);
+        return make_shared<QuitCommand> (cmd_line);
     }
     if (firstWord.compare("cat") == 0) {
-        return new CatCommand(cmd_line);
+        return make_shared<CatCommand> (cmd_line);
     }
-    return new ExternalCommand(cmd_line, getInstance());
+    return make_shared<ExternalCommand> (cmd_line, getInstance());
 /*
   string cmd_s = _trim(string(cmd_line));
   string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
@@ -160,7 +161,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
     } else if(string(cmd_line).find(">") != string::npos){
         redirectFunction(cmd_line);
     } else {
-        Command *cmd = CreateCommand(cmd_line);
+        shared_ptr<Command> cmd = CreateCommand(cmd_line);
         jobslist.removeFinishedJobs();
         if (cmd->isExternalCMD()) {
             pid_t pid = fork();
@@ -240,8 +241,8 @@ void SmallShell::pipeFunction(string cmd_line) {
     string _cmd1 = cmd_line.substr(0, pipe_pos);
     string _cmd2 = isErrorPipe ? cmd_line.substr(pipe_pos + 2) : cmd_line.substr(pipe_pos + 1);
 
-    Command* cmd1 = CreateCommand(_cmd1.c_str());
-    Command* cmd2 = CreateCommand(_cmd2.c_str());
+    shared_ptr<Command> cmd1 = CreateCommand(_cmd1.c_str());
+    shared_ptr<Command> cmd2 = CreateCommand(_cmd2.c_str());
         pid_t pid1 = fork();
         if(pid1 == 0){
             setpgrp();
@@ -308,7 +309,7 @@ void SmallShell::redirectFunction(string cmd_line) {
     size_t red_pos = cmd_line.find(">");
     bool isAppend = (cmd_line.find(">>") != string::npos);
     string _cmd = cmd_line.substr(0, red_pos);
-    Command* cmd = CreateCommand(_cmd.c_str());
+    shared_ptr<Command> cmd = CreateCommand(_cmd.c_str());
     cmd_line = _trim(cmd_line);
     _removeBackgroundSign(cmd_line);
     red_pos = cmd_line.find(">");
@@ -452,16 +453,17 @@ void ChangeDirCommand::execute() {
         }
     }
     else {
-        delete plastPwd;
-        smash.setPlastPwd(currentDir);
         char* path = new char [cmd_params.front().length()+1];
         strcpy(path, cmd_params.front().c_str());
         //should null terminator be removed?
         if(chdir(path) == -1){
             perror("smash error: chdir failed");
+            delete[] path;
+            return;
         }
+        delete plastPwd;
+        smash.setPlastPwd(currentDir);
         delete[] path;
-        return;
     }
 }
 
@@ -657,12 +659,11 @@ bool JobsList::noStoppedJobs() const {
 }
 
 void JobsList::printAllKilledJobs() const {
-    cout << "smash: sending SIGKILL signal to " << jList.size() << " jobs" << endl;
+    cout << "smash: sending SIGKILL signal to " << jList.size() << " jobs:" << endl;
     for (auto &entry: jList) {
         cout << entry.getPid() << ": " << entry.getCmd() << endl;
     }
 
-    cout << "Linux-shell:" << endl;
 
 
 }
@@ -696,7 +697,7 @@ void ExternalCommand::setPid(pid_t pid) {
 
 bool invalid_arg(const string &str) {
     if(str.empty()) return true;
-    for(int i = 0; i < str.length(); i++) {
+    for(size_t i = 0; i < str.length(); i++) {
         if(str[i] == '-' && i == 0) continue;
         if(str[i] < '0' || str[i] > '9') return true;
     }

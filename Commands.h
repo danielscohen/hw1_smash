@@ -2,6 +2,7 @@
 #define SMASH_COMMAND_H_
 
 #include <vector>
+#include <memory>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
@@ -198,8 +199,8 @@ class CatCommand : public BuiltInCommand {
 class SmallShell {
  private:
   // TODO: Add your data members
+  char* plastPwd;
   string prompt;
-    char* plastPwd;
 public:
     int getFgJobId() const;
 
@@ -234,7 +235,7 @@ public:
 private:
     SmallShell();
  public:
-  Command *CreateCommand(const char* cmd_line);
+  shared_ptr<Command> CreateCommand(const char* cmd_line);
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
   void operator=(SmallShell const&)  = delete; // disable = operator
   static SmallShell& getInstance() // make SmallShell singleton

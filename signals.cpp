@@ -30,7 +30,6 @@ void ctrlCHandler(int sig_num) {
     cout<<"smash: got ctrl-C"<<endl;
     SmallShell &smash = SmallShell::getInstance();
     pid_t fgJobPid = smash.getFgJobPid();
-    int fgJobId = smash.getFgJobId();
     string fgJobCMD = smash.getFgJobCmd();
     if (fgJobPid != 0) {
         if(kill(fgJobPid, SIGKILL) == -1){
