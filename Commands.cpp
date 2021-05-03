@@ -132,6 +132,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     if (firstWord.compare("quit") == 0) {
         return new QuitCommand(cmd_line);
     }
+    if (firstWord.compare("cat") == 0) {
+        return new CatCommand(cmd_line);
+    }
     return new ExternalCommand(cmd_line, getInstance());
 /*
   string cmd_s = _trim(string(cmd_line));
@@ -838,13 +841,27 @@ void CatCommand::execute() {
     }
     for (auto &file: cmd_params) {
         int fd = open(file.c_str(), O_RDONLY);
-        if(fd == -1) {
+        if (fd == -1) {
             perror("smash error: open failed");
             return;
         }
-
+        while (true) {
+            char buff[100];
+            ssize_t readRes = read(fd, buff, 100);
+            if (readRes == -1) {
+                perror("smash error: read failed");
+                return;
+            }
+            ssize_t writeRes = write(STDOUT_FILENO, buff, readRes);
+            if (writeRes == -1) {
+                perror("smash error: write failed");
+                return;
+            }
+            if(readRes < 100) break;
+        }
+        if (close(fd) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
     }
-
-
-
 }
