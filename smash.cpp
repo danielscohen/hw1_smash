@@ -15,6 +15,10 @@ int main(int argc, char* argv[]) {
     if(signal(SIGINT , ctrlCHandler)==SIG_ERR) {
         perror("smash error: failed to set ctrl-C handler");
     }
+    struct sigaction saAlarm;
+    saAlarm.sa_flags = SA_RESTART;
+    saAlarm.sa_handler = alarmHandler;
+    sigaction(SIGALRM, &saAlarm, NULL);
 
     //TODO: setup sig alarm handler
 

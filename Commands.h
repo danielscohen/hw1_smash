@@ -154,9 +154,28 @@ public:
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
+class TimedJobEntry {
+    // TODO: Add your data members
+    int duration;
+    pid_t pid;
+    int insertTime;
+    string cmd;
+public:
+    int getDuration() const;
+
+    TimedJobEntry(int duration, pid_t pid, int insertTime, const string &cmd);
+
+    pid_t getPid() const;
+
+    int getInsertTime() const;
+
+    const string &getCmd() const;
+
+
+};
 
 class JobsCommand : public BuiltInCommand {
- // TODO: Add your data members
+    // TODO: Add your data members
     JobsList& jobslist;
  public:
   JobsCommand(const char* cmd_line, JobsList& jobs);
@@ -170,6 +189,14 @@ class KillCommand : public BuiltInCommand {
   KillCommand(const char* cmd_line);
   virtual ~KillCommand() {}
   void execute() override;
+};
+
+class TimeoutCommand : public BuiltInCommand {
+    // TODO: Add your data members
+public:
+    TimeoutCommand(const char* cmd_line);
+    virtual ~TimeoutCommand() {}
+    void execute() override;
 };
 
 class ForegroundCommand : public BuiltInCommand {
@@ -201,6 +228,8 @@ class SmallShell {
   // TODO: Add your data members
   char* plastPwd;
   string prompt;
+  vector<TimedJobEntry> timeOutJobs;
+  vector<int> alarms;
 public:
     int getFgJobId() const;
 
@@ -209,6 +238,14 @@ public:
     const string &getFgJobCmd() const;
 
     void setFgJobCmd(const string &fgJobCmd);
+
+    void addTimeOutJob(string cmd_text, int start_time, pid_t pid, int duration);
+
+    void removeTimeOutJobByPID(pid_t pid);
+
+    void setAlarm(int duration);
+
+    void setNextAlarm();
 
 private:
     JobsList jobslist;
@@ -225,12 +262,13 @@ public:
     //should be initiated to NULL?
     pid_t getFgJobPid() const;
 
-public:
     string getPrompt() const;
 
     void setPrompt(string prompt);
 
     JobsList &getJobslist();
+
+    void removeTimedOutJob();
 
 private:
     SmallShell();

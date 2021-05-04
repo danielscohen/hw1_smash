@@ -49,7 +49,9 @@ vector<string> _cmdLineToParams(const string& cmd_line){
     for(string s; iss >> s; ) {
         params.push_back(s);
     }
-    params.erase(params.begin());
+    if(!params.empty()) {
+        params.erase(params.begin());
+    }
     return params;
 }
 
@@ -135,6 +137,9 @@ shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
     }
     if (firstWord.compare("cat") == 0) {
         return make_shared<CatCommand> (cmd_line);
+    }
+    if (firstWord.compare("timeout") == 0) {
+        return make_shared<TimeoutCommand> (cmd_line);
     }
     return make_shared<ExternalCommand> (cmd_line, getInstance());
 /*
@@ -364,6 +369,68 @@ void SmallShell::redirectFunction(string cmd_line) {
     }
 }
 
+void SmallShell::addTimeOutJob(string cmd_text, int start_time, pid_t pid, int duration) {
+    timeOutJobs.push_back(TimedJobEntry(duration, pid, start_time, cmd_text));
+
+}
+
+void SmallShell::removeTimedOutJob() {
+    time_t t = time(nullptr);
+    if(t == -1){
+        perror("smash error: time failed");
+        return;
+    }
+    for (auto &job: timeOutJobs) {
+        if(difftime(t, job.getInsertTime()) >= job.getDuration()){
+            cout << "smash: " << job.getCmd() <<" timed out!" << endl;
+            if(kill(job.getPid(), SIGKILL) == -1){
+                perror("smash error: kill failed");
+            }
+            removeTimeOutJobByPID(job.getPid());
+            return;
+        }
+    }
+}
+
+void SmallShell::removeTimeOutJobByPID(pid_t pid) {
+    for (auto it = timeOutJobs.begin(); it != timeOutJobs.end(); ++it) {
+        if (it->getPid() == pid){
+            timeOutJobs.erase(it);
+            return;
+        }
+    }
+
+}
+
+
+void SmallShell::setAlarm(int duration) {
+    time_t t = time(nullptr);
+    if(t == -1){
+        perror("smash error: time failed");
+        return;
+    }
+    int absSendTime = t + duration;
+    sort(alarms.begin(), alarms.end());
+    if(alarms.empty() || absSendTime < alarms.front()) {
+        alarm(duration);
+    }
+    alarms.push_back(absSendTime);
+
+}
+
+void SmallShell::setNextAlarm() {
+    time_t t = time(nullptr);
+    if(t == -1){
+        perror("smash error: time failed");
+        return;
+    }
+    sort(alarms.begin(), alarms.end());
+    alarms.erase(alarms.begin());
+    if(!alarms.empty()) {
+        alarm(alarms.front() - t);
+    }
+}
+
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
         : BuiltInCommand(cmd_line), smash(smash) {}
 
@@ -539,9 +606,14 @@ void JobsList::addJob( const string& cmdTxt, bool isStopped, pid_t pid) {
 void JobsList::printJobsList() {
     //[<job-id>] <command> : <process id> <seconds elapsed> (stopped)
     sort(jList.begin(), jList.end(), compareEntry);
+    time_t t = time(nullptr);
+    if(t == -1){
+        perror("smash error: time failed");
+        return;
+    }
     for (auto &entry: jList) {
         cout <<'['<<entry.getJobId()<<"] "<<entry.getCmd()<<" : "<<entry.getPid()<<" "
-        <<difftime(time(nullptr), entry.getInsertTime())<<" secs";
+        <<difftime(t , entry.getInsertTime())<<" secs";
         if (entry.getStopped()) cout<<" (stopped)";
         cout<<endl;
     }
@@ -555,6 +627,7 @@ void JobsList::killAllJobs() {
 }
 
 void JobsList::removeFinishedJobs() {
+    SmallShell &smash = SmallShell::getInstance();
     if(jList.empty()) return;
     int status;
     pid_t jobStatus = waitpid(-1,&status, WNOHANG);
@@ -565,6 +638,7 @@ void JobsList::removeFinishedJobs() {
 
         }
         removeJobByPID(jobStatus);
+        smash.removeTimeOutJobByPID(jobStatus);
         if (jList.empty()){
             maxJobID = 0;
             return;
@@ -866,3 +940,66 @@ void CatCommand::execute() {
         }
     }
 }
+
+TimeoutCommand::TimeoutCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
+}
+
+void TimeoutCommand::execute() {
+    unsigned int sec = stoi(cmd_params[0]);
+    string cmd_txt = cmdText.substr(cmdText.find(cmd_params[0], 0) + cmd_params[0].length());
+    SmallShell &smash = SmallShell::getInstance();
+    JobsList &jobslist = smash.getJobslist();
+
+    smash.setAlarm(sec);
+
+    shared_ptr<Command> cmd = smash.CreateCommand(cmd_txt.c_str());
+    jobslist.removeFinishedJobs();
+        pid_t pid = fork();
+        if (pid == 0) {
+            setpgrp();
+            cmd->execute();
+        } else if (pid == -1) {
+            perror("smash error: fork failed");
+        } else {
+            time_t t = time(nullptr);
+            if(t == -1){
+                perror("smash error: time failed");
+                return;
+            }
+            smash.addTimeOutJob(cmdText, t, pid, sec);
+
+            if (cmd->isBackgroundCMD()) {
+                jobslist.removeFinishedJobs();
+                jobslist.addJob(cmdText, false, pid);
+            } else {
+                waitpid(pid, nullptr, WUNTRACED);
+                smash.removeTimeOutJobByPID(pid);
+            }
+        }
+
+
+
+    }
+
+int TimedJobEntry::getDuration() const {
+    return duration;
+}
+
+pid_t TimedJobEntry::getPid() const {
+    return pid;
+}
+
+int TimedJobEntry::getInsertTime() const {
+    return insertTime;
+}
+
+const string &TimedJobEntry::getCmd() const {
+    return cmd;
+}
+
+TimedJobEntry::TimedJobEntry(int duration, pid_t pid, int insertTime, const string &cmd) : duration(duration),
+                                                                                                     pid(pid),
+                                                                                                     insertTime(
+                                                                                                             insertTime),
+                                                                                                     cmd(cmd) {}
