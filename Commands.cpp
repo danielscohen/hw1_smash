@@ -567,7 +567,7 @@ void ExternalCommand::execute() {
 //    }
 //    arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
     const char* path = "/bin/bash";
-    execv(path, (char*const*) arguments);
+    execvp(path, (char*const*) arguments);
 }
 
 JobsList::JobEntry::JobEntry(int jobId, pid_t pid, int insertTime, const string &cmd, bool isStopped) : jobID(jobId), pid(pid),
