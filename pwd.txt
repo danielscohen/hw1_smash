@@ -1,0 +1,4 @@
+/home/student/shares/OS/hw1_smash
+/home/student/shares/OS/hw1_smash
+a b
+smash pid is 56073

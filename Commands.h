@@ -230,6 +230,12 @@ class SmallShell {
   string prompt;
   vector<TimedJobEntry> timeOutJobs;
   vector<int> alarms;
+  bool inPipeCMD = false;
+public:
+    bool isInPipeCmd() const;
+
+    void setInPipeCmd(bool inPipeCmd);
+
 public:
     int getFgJobId() const;
 

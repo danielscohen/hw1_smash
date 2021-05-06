@@ -48,9 +48,8 @@ cat test/again
 ./my_sleep 6 > sl
 !time.sleep(7)
 cat sl
-./my_sleep 8 > sl &
+./my_sleep 8 &
 !time.sleep(3)
 kill -9 2
 !time.sleep(1)
-cat sl
 quit kill

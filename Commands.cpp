@@ -270,7 +270,9 @@ void SmallShell::pipeFunction(string cmd_line) {
                 perror("smash error: close failed");
                 exit(0);
             }
+            inPipeCMD = true;
             cmd1->execute();
+            inPipeCMD = false;
             exit(0);
         } else if(pid1 == -1) {
             perror("smash error: fork failed");
@@ -290,7 +292,9 @@ void SmallShell::pipeFunction(string cmd_line) {
                 perror("smash error: close failed");
                 exit(0);
             }
+            inPipeCMD = true;
             cmd2->execute();
+            inPipeCMD = false;
             exit(0);
         } else if(pid2 == -1) {
             perror("smash error: fork failed");
@@ -431,6 +435,14 @@ void SmallShell::setNextAlarm() {
     }
 }
 
+bool SmallShell::isInPipeCmd() const {
+    return inPipeCMD;
+}
+
+void SmallShell::setInPipeCmd(bool b) {
+    inPipeCMD = b;
+}
+
 CHPromptCommand::CHPromptCommand(const char *cmd_line, SmallShell &smash)
         : BuiltInCommand(cmd_line), smash(smash) {}
 
@@ -469,7 +481,9 @@ ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) 
  }
 
 void ShowPidCommand::execute() {
-    cout << "smash pid is " << getpid() << endl;
+    SmallShell &smash = SmallShell::getInstance();
+    pid_t pid = smash.isInPipeCmd() ? getppid() : getpid();
+    cout << "smash pid is " << pid << endl;
 }
 
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
@@ -749,8 +763,7 @@ void JobsList::addJobAtJobId(const string &cmdText, int jobId, pid_t pid) {
         return;
     }
     jList.push_back(JobEntry(jobId, pid, t, cmdText, true));
-
-
+    if(jobId > maxJobID) maxJobID = jobId;
 }
 
 JobsCommand::JobsCommand(const char *cmd_line, JobsList &jobs) : BuiltInCommand(cmd_line), jobslist(jobs) {
@@ -810,41 +823,26 @@ void ForegroundCommand::execute() {
 
     } else if (cmd_params.size() == 1 && !jobsList.isJobIdInList(stoi(cmd_params[0]))) {
         cerr << "smash error: fg: job-id " << cmd_params[0] << " does not exist" << endl;
-    } else if (cmd_params.size() == 1) {
-        JobsList::JobEntry &job = jobsList.getJobById(stoi(cmd_params[0]));
-        cout << job.getCmd() << " : " << job.getPid() << endl;
-        smash.setFgJobId(job.getJobId());
-        smash.setFgJobCmd(job.getCmd());
-        smash.setFgJobPid(job.getPid());
-        if (kill(job.getPid(), SIGCONT) == -1) {
-            perror("smash error: kill failed");
-        } else {
-            if (waitpid(job.getPid(), NULL, WUNTRACED) == -1) {
-                perror("smash error: waitpid failed");
-            } else {
-                jobsList.removeJobById(job.getJobId());
-            }
-            smash.setFgJobPid(0);
-            smash.setFgJobId(0);
-        }
     } else {
-        JobsList::JobEntry &job = jobsList.getLastJob();
-        cout << job.getCmd() << " : " << job.getPid() << endl;
-        smash.setFgJobId(job.getJobId());
-        smash.setFgJobCmd(job.getCmd());
-        smash.setFgJobPid(job.getPid());
-        if (kill(job.getPid(), SIGCONT) == -1) {
+        JobsList::JobEntry &job = cmd_params.size() == 1 ? jobsList.getJobById(stoi(cmd_params[0])) : jobsList.getLastJob();
+        int jobId = job.getJobId();
+        pid_t pid = job.getPid();
+        string cmd = job.getCmd();
+        jobsList.removeJobById(jobId);
+        cout << cmd << " : " << pid << endl;
+        smash.setFgJobId(jobId);
+        smash.setFgJobCmd(cmd);
+        smash.setFgJobPid(pid);
+        if (kill(pid, SIGCONT) == -1) {
             perror("smash error: kill failed");
-        } else {
-            if (waitpid(job.getPid(), NULL, WUNTRACED) == -1) {
-                perror("smash error: waitpid failed");
-            } else {
-                jobsList.removeJobById(job.getJobId());
-            }
-            smash.setFgJobPid(0);
-            smash.setFgJobId(0);
-
+            return;
         }
+        if (waitpid(pid, NULL, WUNTRACED) == -1) {
+            perror("smash error: waitpid failed");
+            return;
+        }
+        smash.setFgJobPid(0);
+        smash.setFgJobId(0);
 
 
     }

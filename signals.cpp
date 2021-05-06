@@ -35,6 +35,7 @@ void ctrlCHandler(int sig_num) {
         if(kill(fgJobPid, SIGKILL) == -1){
             perror("smash error: kill failed");
         }
+        smash.removeTimeOutJobByPID(fgJobPid);
         cout << "smash: process " << fgJobPid <<" was killed" << endl;
     }
 }
@@ -43,6 +44,7 @@ void alarmHandler(int sig_num) {
     SmallShell &smash = SmallShell::getInstance();
     cout<<"smash: got an alarm"<<endl;
     smash.setNextAlarm();
+    smash.getJobslist().removeFinishedJobs();
     smash.removeTimedOutJob();
 }
 
