@@ -1,0 +1,34 @@
+total 1081
+-rwxrwxrwx 1 root root 1032464 May  6 13:01 a.out
+-rwxrwxrwx 1 root root     172 Apr 30 15:46 a.txt
+-rwxrwxrwx 1 root root       0 May  6 13:03 cat.txt
+drwxrwxrwx 1 root root    4096 May  6 12:42 cmake-build-debug
+-rwxrwxrwx 1 root root     146 Apr 20 18:54 CMakeLists.txt
+-rwxrwxrwx 1 root root   29694 May  6 13:01 Commands.cpp
+-rwxrwxrwx 1 root root    7285 May  6 12:42 Commands.h
+-rwxrwxrwx 1 root root       0 May  5 17:09 echo
+drwxrwxrwx 1 root root       0 May  6 12:08 files
+-rwxrwxrwx 1 root root      97 Apr 19 18:12 main.cpp
+-rwxrwxrwx 1 root root     883 Apr 19 11:33 Makefile
+-rwxrwxrwx 1 root root     104 May  3 12:55 out.txt
+-rwxrwxrwx 1 root root     216 May  3 08:59 pid2.txt
+-rwxrwxrwx 1 root root       9 May  3 08:49 pid3.txt
+-rwxrwxrwx 1 root root       6 May  3 08:56 pid4.txt
+-rwxrwxrwx 1 root root       6 May  3 08:51 pid5.txt
+-rwxrwxrwx 1 root root     896 May  3 09:03 pid6.txt
+-rwxrwxrwx 1 root root      19 May  2 10:12 pid.txt
+-rwxrwxrwx 1 root root      91 May  5 12:13 pwd.txt
+-rwxrwxrwx 1 root root    3476 May  3 09:44 Readme.md
+-rwxrwxrwx 1 root root    3131 Apr 19 11:33 README.txt
+-rwxrwxrwx 1 root root     121 May  3 09:27 res.txt
+-rwxrwxrwx 1 root root    1536 May  5 07:04 signals.cpp
+-rwxrwxrwx 1 root root     183 Apr 30 08:15 signals.h
+-rwxrwxrwx 1 root root     910 May  4 10:00 smash.cpp
+-rwxrwxrwx 1 root root     104 Apr 19 11:33 test_expected_output1.txt
+-rwxrwxrwx 1 root root      86 Apr 19 11:33 test_input1.txt
+-rwxrwxrwx 1 root root    6298 May  3 09:44 test.py
+drwxrwxrwx 1 root root       0 May  3 09:49 tests_tal
+drwxrwxrwx 1 root root    4096 May  5 12:32 unit
+-rwxrwxrwx 1 root root    1771 May  6 13:03 val.out
+-rwxrwxrwx 1 root root     125 May  6 12:20 val.txt
+smash pid is 130322

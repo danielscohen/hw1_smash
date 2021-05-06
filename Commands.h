@@ -226,7 +226,7 @@ class CatCommand : public BuiltInCommand {
 class SmallShell {
  private:
   // TODO: Add your data members
-  char* plastPwd;
+  string plastPwd = "";
   string prompt;
   vector<TimedJobEntry> timeOutJobs;
   vector<int> alarms;
@@ -262,9 +262,9 @@ private:
 public:
     void setFgJobPid(pid_t fgJobPid);
 
-    char * getPlastPwd() const;
+    string getPlastPwd() const;
 
-    void setPlastPwd(char *plastPwd);
+    void setPlastPwd(string plastPwd);
     //should be initiated to NULL?
     pid_t getFgJobPid() const;
 

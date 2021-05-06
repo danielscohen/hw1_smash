@@ -1,0 +1,12 @@
+chprompt aa
+chprompt
+cd ..
+cd -
+pwd
+jobs
+ls -l
+ls -l > cat.txt
+showpid >> cat.txt
+cat cat.txt
+cat cat.txt | grep 2
+quit kill

@@ -45,7 +45,9 @@ string _trim(const std::string& s)
 
 vector<string> _cmdLineToParams(const string& cmd_line){
     vector<string> params;
-    std::istringstream iss(_trim(string(cmd_line)));
+    string cmd_no_tabs = _trim(string(cmd_line));
+    replace(cmd_no_tabs.begin(), cmd_no_tabs.end(), '\t', ' ');
+    std::istringstream iss(cmd_no_tabs);
     for(string s; iss >> s; ) {
         params.push_back(s);
     }
@@ -94,11 +96,10 @@ void _removeBackgroundSign(string& cmd_line) {
 }
 
 
-SmallShell::SmallShell() : plastPwd(nullptr), prompt("smash") {
+SmallShell::SmallShell() :  prompt("smash") {
 }
 
 SmallShell::~SmallShell() {
-    delete plastPwd;
 }
 
 /**
@@ -107,7 +108,7 @@ SmallShell::~SmallShell() {
 shared_ptr<Command> SmallShell::CreateCommand(const char* cmd_line) {
 	// For example:
     string cmd_s = _trim(string(cmd_line));
-    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \t\n"));
     if (firstWord.compare("chprompt") == 0) {
         return make_shared<CHPromptCommand> (cmd_line, getInstance());
     }
@@ -200,11 +201,11 @@ void SmallShell::setPrompt(string prompt) {
     SmallShell::prompt = prompt;
 }
 
-char *SmallShell::getPlastPwd() const {
+string SmallShell::getPlastPwd() const {
     return plastPwd;
 }
 
-void SmallShell::setPlastPwd(char *plastPwd) {
+void SmallShell::setPlastPwd(string plastPwd) {
     SmallShell::plastPwd = plastPwd;
 }
 
@@ -497,7 +498,7 @@ void GetCurrDirCommand::execute() {
         return;
     }
     cout << currentDir << endl;
-    delete currentDir;
+    free(currentDir);
 }
 
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, SmallShell& smash) : BuiltInCommand(cmd_line), smash(smash)  {
@@ -510,41 +511,44 @@ void ChangeDirCommand::execute() {
         perror("smash error: get_current_dir_name failed");
         return;
     }
-    char *plastPwd = smash.getPlastPwd();
+    string lastPwd = smash.getPlastPwd();
     if (cmd_params.size() == 0) { //What happens if size==0?
+        free(currentDir);
         return;
     }
     if (cmd_params.size() > 1) {
         cerr << "smash error: cd: too many arguments" << endl;
+        free(currentDir);
         return;
     }
     if (cmd_params.front() == "-") {
-        if (plastPwd != nullptr) {
-            if(chdir(plastPwd) != -1){
-                delete plastPwd;
+        if (!lastPwd.empty()) {
+            if(chdir(lastPwd.c_str()) != -1){
                 smash.setPlastPwd(currentDir);
             } else {
                 perror("smash error: chdir failed");
             }
+            free(currentDir);
             return;
         }
         else {
             cerr << "smash error: cd: OLDPWD not set" << endl;  // if null
+            free(currentDir);
             return;
         }
     }
     else {
-        char* path = new char [cmd_params.front().length()+1];
-        strcpy(path, cmd_params.front().c_str());
-        //should null terminator be removed?
-        if(chdir(path) == -1){
+//        char* path = new char [cmd_params.front().length()+1];
+//        strcpy(path, cmd_params.front().c_str());
+
+
+        if(chdir(cmd_params[0].c_str()) == -1){
             perror("smash error: chdir failed");
-            delete[] path;
+            free(currentDir);
             return;
         }
-        delete plastPwd;
         smash.setPlastPwd(currentDir);
-        delete[] path;
+        free(currentDir);
     }
 }
 
@@ -553,21 +557,22 @@ ExternalCommand::ExternalCommand(const char *cmd_line, SmallShell &smash): Comma
 
 
 void ExternalCommand::execute() {
-    const char* arguments [4];
+//    const char* arguments [4];
     //const char* programName = "sh";
-    arguments[0] = "bash";
-    arguments[1] = "-c";
+//    arguments[0] = "bash";
+//    arguments[1] = "-c";
     string s = cmdText;
     string args = _trim(s);
     _removeBackgroundSign(args);
-    arguments[2] = args.c_str();
-    arguments[3] = NULL;
+//    arguments[2] = args.c_str();
+//    arguments[3] = NULL;
 //    for (int j = 0;  j < cmd_params.size()+1;  ++j) {     // copy args
 //        arguments[j+1] = cmd_params[j].c_str();
 //    }
 //    arguments[cmd_params.size()+1] = nullptr;                    //nullptr or NULL?
-    const char* path = "/bin/bash";
-    execvp(path, (char*const*) arguments);
+//    const char* path = "bash";
+    execlp("/bin/bash", "/bin/bash", "-c", args.c_str(), (char*)NULL);
+//    execvp(path, (char*const*) arguments);
 }
 
 JobsList::JobEntry::JobEntry(int jobId, pid_t pid, int insertTime, const string &cmd, bool isStopped) : jobID(jobId), pid(pid),
